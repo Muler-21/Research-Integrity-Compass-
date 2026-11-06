@@ -3,7 +3,7 @@
 
 **Publication quality, integrity and reward screening for universities.**
 
-**Live app:** https://muler-21.github.io/Research-Integrity-Compass-/ · **Author:** Mulusew Kassa Bitew ([ORCID 0000-0001-6223-0037](https://orcid.org/0000-0001-6223-0037)) · **Licence:** MIT · **Cite:** see [How to cite](#how-to-cite)
+**Live app:** https://muler-21.github.io/Research-Integrity-Compass-/ · **Video tour:** https://youtu.be/p-LxSzZi7-0 · **Author:** Mulusew Kassa Bitew ([ORCID 0000-0001-6223-0037](https://orcid.org/0000-0001-6223-0037)) · **Licence:** MIT · **Cite:** see [How to cite](#how-to-cite)
 
 RIC is a single-file web app for university research-management teams. It does five things:
 
@@ -14,6 +14,12 @@ RIC is a single-file web app for university research-management teams. It does f
 - flags where they disagree
 
 It uses the free [OpenAlex](https://openalex.org) API and runs entirely in the browser, with no server or install.
+
+## Video tour
+
+[![Watch the 9-minute video tour of Research Integrity Compass on YouTube](docs/video-thumbnail.jpg)](https://youtu.be/p-LxSzZi7-0)
+
+**[▶ Watch on YouTube: a 9-minute guided tour of every feature](https://youtu.be/p-LxSzZi7-0)**. It covers setup, the university dashboard, publisher ranking, reward screening with the Debre Markos University rules, and the staff and department views. The data shown in the video is fictional demonstration data.
 
 ## Run it
 

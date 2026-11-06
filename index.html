@@ -211,6 +211,9 @@ header{padding:10px 28px;gap:14px;background:color-mix(in srgb,var(--panel) 90%,
 @keyframes settle{0%{transform:rotate(-160deg)}55%{transform:rotate(52deg)}75%{transform:rotate(14deg)}90%{transform:rotate(28deg)}100%{transform:rotate(24deg)}}
 @media (max-width:860px){ .hero-in{grid-template-columns:1fr;padding:30px 20px 36px;gap:18px} .compass{max-width:330px;width:100%;margin:0 auto;order:-1} }
 
+.watch{display:inline-flex;align-items:center;gap:9px;margin-top:18px;color:#E8D7A8;font-weight:600;font-size:15px;text-decoration:none}
+.watch svg{width:22px;height:22px;color:var(--brass-hi)}
+.watch:hover{color:#fff;text-decoration:underline}
 /* steps (a real sequence) */
 .steps{list-style:none;counter-reset:st;display:grid;grid-template-columns:repeat(3,1fr);margin:0 0 22px;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
 .steps li{counter-increment:st;position:relative;padding:18px 20px 18px 62px;font-size:14.5px;color:var(--muted);line-height:1.5}
@@ -271,6 +274,7 @@ footer.site .am{color:#C5CFDF}
         <button class="cta-main" data-go="mgmt" data-pt="impact">Build a university dashboard</button>
         <button class="cta-alt" data-go="incentive" data-pt="policy">Screen reward claims</button>
       </div>
+      <a class="watch" href="https://youtu.be/p-LxSzZi7-0" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 8.2v7.6l6-3.8z" fill="currentColor"/></svg>Watch the 9-minute video tour</a>
       <ul class="trust">
         <li>Free for everyone, with no sign-up</li>
         <li>Data from OpenAlex, the open catalogue of the world's research</li>
@@ -485,7 +489,9 @@ footer.site .am{color:#C5CFDF}
       <p>Tiers and levels are signals built from OpenAlex data and the lists you load. A flag is not proof that a journal is predatory, and publishing in one is not misconduct: authors are often deceived, and journals get hijacked or cloned. Check each case before acting, and don't publish lists of named researchers on this basis alone.</p>
     </div>
     <div>
-      <h2>Cite RIC</h2>
+      <h2>Learn RIC</h2>
+      <p><a href="https://youtu.be/p-LxSzZi7-0" target="_blank" rel="noopener">Watch the video tour on YouTube</a> (9 minutes, every button explained).</p>
+      <h2 style="margin-top:14px">Cite RIC</h2>
       <p>Bitew, M. K. (2026). <i>Research Integrity Compass (RIC)</i> (Version 1.0.0) [Computer software]. <a href="https://github.com/Muler-21/Research-Integrity-Compass-" target="_blank" rel="noopener">github.com/Muler-21/Research-Integrity-Compass-</a></p>
     </div>
     <div>
