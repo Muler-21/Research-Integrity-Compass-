@@ -37,7 +37,8 @@ For a university's research-management team. Pick the institution and a range of
   - integrity-risk papers
   - papers that would qualify under the institution's reward rules
 - **Quality bands** for every paper, checked in this order: ⚠ Integrity risk (retracted, watchlist, warning signals) → Excellent (top 10% cited) → Strong (high-impact or established journal, or FWCI ≥ 1) → Standard (indexed or accredited venue) → Unverified.
-- **Breakdowns:** a chart of output by year and band; a table by research field; a researchers table; an integrity-risk register.
+- **Breakdowns:** a chart of output by year and band; a table by research field; a **By department** table; a researchers table; an integrity-risk register.
+- **Departments:** OpenAlex doesn't record departments, so RIC reads each person's department and college from the addresses they print on their papers (e.g. *"Department of Animal Science, College of Agriculture and Natural Resources, Debre Markos University"*) and uses the one they give most often. It handles "Dept." abbreviations, all-capitals addresses and the university name written in front of a unit. People who never name a department show as "not stated". Departments also appear in the Staff list, in CSV exports and on the reward verification form.
 - **Papers table:** every paper with its band, its metrics and its status under the institution's rules (e.g. DMU), downloadable as CSV.
 - **Methodology note:** explains the indicators and follows DORA / Leiden Manifesto practice. Use the figures to start conversations and to review integrity, not to rank individuals.
 

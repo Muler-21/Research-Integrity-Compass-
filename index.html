@@ -1135,6 +1135,61 @@ function renderJournal(){
   rp.querySelector(".dl").onclick=()=>download(`researchers_${slug(st.meta.map(m=>m.name).join("_"))}.csv`, toCSV(rows(), [...authorCSVBase, ...perCols.map(c=>({...c,h:"papers_in_"+slug(st.meta.find(m=>"p_"+m.id===c.k).name)})), {k:"works",h:"total_works"},{k:"h",h:"h_index"}]));
 }
 
+/* ---------------- departments, read from the affiliation addresses printed on papers ---------------- */
+const DEPT_RE=/^(department|dept\b|dept\.|division|unit|section|program(me)?\b|laboratory|lab\b|research (centre|center|group|unit)|chair\b|discipline)\b/i;
+const COLL_RE=/^(college|faculty|school|institute|centre|center|academy)\b/i;
+const reEsc=t=>t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+function instCore(name){ return norm(name).split(" ").filter(w=>!["university","of","the","college","institute"].includes(w)).join(" "); }
+function tidyAff(x){
+  x=x.replace(/\s+/g," ").replace(/^[\s.\-–:&]+|[\s.\-–:&]+$/g,"");
+  if(x===x.toUpperCase() && /[A-Z]{3}/.test(x)) x=x.toLowerCase().replace(/\b([a-z])/g,m=>m.toUpperCase()).replace(/\b(Of|And|For|The|In|On)\b/g,w=>w.toLowerCase());
+  x=x.replace(/^dept\.?\s*(of\s+)?/i,"Department of ").replace(/^department\s+(?!of\b)/i,"Department of ").replace(/^department of/i,"Department of");
+  return x.charAt(0).toUpperCase()+x.slice(1);
+}
+function parseAffil(raw, instName){
+  const out={dept:"",college:""}; if(!raw) return out;
+  const nameRe = instName ? new RegExp(reEsc(instName),"ig") : null;
+  for(let sg of String(raw).split(/[,;|]|\s[-–]\s/)){
+    sg=sg.trim(); if(nameRe) sg=sg.replace(nameRe,"").trim();
+    if(sg.length<6) continue;
+    if(!out.dept && (DEPT_RE.test(sg) || /\bdepartment of\b/i.test(sg))){ out.dept=tidyAff(sg.replace(/^.*?(?=\bdepartment of\b)/i,"")); continue; }
+    if(!out.college && COLL_RE.test(sg)){ out.college=tidyAff(sg); continue; }
+  }
+  return out;
+}
+/* the address strings an author used for one institution on one paper */
+function affStrings(a, instId, instName){
+  let raws=[];
+  if(Array.isArray(a.affiliations) && a.affiliations.length && instId)
+    raws=a.affiliations.filter(x=>(x.institution_ids||[]).map(sid).includes(instId)).map(x=>x.raw_affiliation_string).filter(Boolean);
+  if(!raws.length){
+    const core=instCore(instName||"");
+    raws=(a.raw_affiliation_strings||[]).filter(r=>core && norm(r).includes(core));
+    if(!raws.length && (a.raw_affiliation_strings||[]).length===1 && instId && (a.institutions||[]).some(i=>sid(i.id)===instId)) raws=a.raw_affiliation_strings.slice();
+  }
+  return raws;
+}
+function paperDept(a, instId, instName){
+  for(const r of affStrings(a,instId,instName)){ const p=parseAffil(r,instName); if(p.dept||p.college) return p; }
+  return {dept:"",college:""};
+}
+/* most frequently used department / college per author across their papers */
+function deptIndex(works, instId, instName){
+  const m=new Map();
+  for(const w of works) for(const a of (w.authorships||[])){
+    if(!a.author?.id) continue;
+    const p=paperDept(a,instId,instName); if(!p.dept && !p.college) continue;
+    const id=sid(a.author.id); const o=m.get(id)||{d:new Map(),c:new Map(),n:0};
+    if(p.dept){ const k=norm(p.dept); const e=o.d.get(k)||{v:p.dept,n:0}; e.n++; o.d.set(k,e); }
+    if(p.college){ const k=norm(p.college); const e=o.c.get(k)||{v:p.college,n:0}; e.n++; o.c.set(k,e); }
+    o.n++; m.set(id,o);
+  }
+  const top=mp=>[...mp.values()].sort((x,y)=>y.n-x.n)[0]?.v||"";
+  const res=new Map(); for(const [id,o] of m) res.set(id,{dept:top(o.d), college:top(o.c), n:o.n}); return res;
+}
+const deptCell = r => r.dept||r.college ? `${esc(r.dept||"—")}${r.college?`<div class="flagnote">${esc(r.college)}</div>`:""}` : `<span class="muted small">not stated</span>`;
+function deptOptions(rows){ return [...new Set(rows.map(r=>r.dept).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+
 /* ---------------- STAFF view ---------------- */
 let staffState=null;
 const STAFF_TIERS = ["high","solid","indexed","unvetted","caution","flagged","other"];
@@ -1186,7 +1241,14 @@ async function doStaff(){
     }
   }
   const sum=g.groups.reduce((s,x)=>s+x.count,0);
-  staffState={inst, who, minWorks, staffTotal:staff.total, staffIds:staff.ids, g, jrows, counts,
+  // 4) departments, from the addresses printed on the organization's papers
+  let depts=new Map(), deptNote="";
+  try{
+    setStatus("Reading departments from the addresses on the organization's papers…");
+    const works=await fetchWorks(filter, 6000);
+    depts=deptIndex(works, inst.id, inst.name);
+  }catch(e){ if(e.status===429) throw e; deptNote="Departments couldn't be read this time ("+e.message+")."; }
+  staffState={inst, who, minWorks, staffTotal:staff.total, staffIds:staff.ids, g, jrows, counts, depts, deptNote, deptSel:"",
               none: g.complete&&g.totalWorks!=null?Math.max(0,g.totalWorks-sum):0, sig:tierSig(), sel:null, showZero:false, onlyConcern:false};
   renderStaff();
 }
@@ -1194,7 +1256,8 @@ async function doStaff(){
 function staffRows(st){
   return st.staffIds.map(id=>{
     const a=S.authors.get(id)||{}; const info=authorInfo(id); const c=st.counts.get(id)||{};
-    const r={id, name:a.display_name||id, ...info};
+    const d=st.depts?.get(id)||{};
+    const r={id, name:a.display_name||id, ...info, dept:d.dept||"", college:d.college||""};
     let tot=0; for(const t of STAFF_TIERS){ r[t]=c[t]||0; tot+=r[t]; }
     r.total=tot; r.concern=r.flagged+r.caution;
     r.pctTop = tot ? (r.high+r.solid)/tot : null;
@@ -1229,12 +1292,14 @@ function renderStaff(){
   tp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Staff${st.sel?` with papers in ${tierTag(st.sel)} journals`:""}</h2><span class="grow"></span>
     <label class="small"><input type="checkbox" class="concern" ${st.onlyConcern?"checked":""}> only people with Watchlist / Warning papers</label>
     <label class="small"><input type="checkbox" class="zero" ${st.showZero?"checked":""}> include people with no papers in range</label>
+    <select class="dsel" style="max-width:260px"><option value="">All departments</option>${deptOptions(rowsAll).map(d=>`<option ${st.deptSel===d?"selected":""}>${esc(d)}</option>`).join("")}</select>
     <input placeholder="filter by name…" class="af" style="width:180px"><button class="small dl">Download CSV</button></div>
-    <p class="small muted" style="margin:0 0 8px">Counts = papers carrying this organization's affiliation, in your year range and work-type filter. <b>Profile</b> opens that person's journal list.</p>
+    <p class="small muted" style="margin:0 0 8px">Counts = papers carrying this organization's affiliation, in your year range and work-type filter. Department and college are read from the addresses people print on their papers (the one they use most often). <b>Profile</b> opens that person's journal list.${st.deptNote?` <b>${esc(st.deptNote)}</b>`:""}</p>
     <div class="small muted cnt" style="margin-bottom:6px"></div><div class="tw"></div>`;
   out.appendChild(tp);
   const cols=[
     {k:"name",h:"Researcher",html:r=>`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>${r.orcid?`<div class="flagnote"><a href="https://orcid.org/${esc(r.orcid)}" target="_blank" rel="noopener">${esc(r.orcid)}</a></div>`:""}`},
+    {k:"dept",h:"Department / college",sortv:r=>r.dept||"~",html:deptCell},
     {k:"total",h:"Papers",num:true},
     {k:"pctTop",h:"Mix",sortv:r=>r.pctTop,html:miniBar},
     ...STAFF_TIERS.map(t=>({k:t,h:SHORT[t],num:true,html:r=>r[t]?(t==="flagged"||t==="caution"?`<b style="color:${TIER[t].c}">${r[t]}</b>`:r[t]):`<span class="muted">·</span>`})),
@@ -1242,17 +1307,18 @@ function renderStaff(){
     {k:"_p",h:"",html:r=>`<button class="small prof" data-id="${r.id}">Profile</button>`},
   ];
   const rows=()=>{ const q=norm(tp.querySelector(".af").value);
-    return rowsAll.filter(r=>(st.showZero||r.total>0) && (!st.sel||r[st.sel]>0) && (!st.onlyConcern||r.concern>0) && (!q||norm(r.name).includes(q))); };
-  const draw=()=>{ const rs=rows(); tp.querySelector(".cnt").textContent=`${rs.length.toLocaleString()} people shown`;
+    return rowsAll.filter(r=>(st.showZero||r.total>0) && (!st.sel||r[st.sel]>0) && (!st.onlyConcern||r.concern>0) && (!st.deptSel||r.dept===st.deptSel) && (!q||norm(r.name+" "+r.dept+" "+r.college).includes(q))); };
+  const draw=()=>{ const rs=rows(); tp.querySelector(".cnt").textContent=`${rs.length.toLocaleString()} ${rs.length===1?"person":"people"} shown`;
     table(tp.querySelector(".tw"), rs, cols, {sort: st.sel || (st.onlyConcern?"concern":"total")}); };
   tp.querySelector(".af").addEventListener("input",draw);
   tp.querySelector(".zero").addEventListener("change",e=>{ st.showZero=e.target.checked; draw(); });
+  tp.querySelector(".dsel").addEventListener("change",e=>{ st.deptSel=e.target.value; draw(); });
   tp.querySelector(".concern").addEventListener("change",e=>{ st.onlyConcern=e.target.checked; draw(); });
   tp.addEventListener("click",e=>{ const b=e.target.closest("button.prof"); if(!b) return;
     const a=S.authors.get(b.dataset.id); S.picked.author=[{id:b.dataset.id,name:a?.display_name||b.dataset.id,hint:st.inst.name}];
     drawPicked("author","#pickedAuthor",true); showTab("author"); run(doAuthor); });
   tp.querySelector(".dl").onclick=()=>download(`staff_${slug(st.inst.name)}${st.sel?"_"+st.sel:""}.csv`, toCSV(rows(), [
-    ...authorCSVBase, {k:"total",h:"papers_in_range"}, ...STAFF_TIERS.map(t=>({k:t,h:"papers_"+slug(TIER[t].label).replace(/-/g,"_")})),
+    ...authorCSVBase, {k:"dept",h:"department"}, {k:"college",h:"college_or_faculty"}, {k:"total",h:"papers_in_range"}, ...STAFF_TIERS.map(t=>({k:t,h:"papers_"+slug(TIER[t].label).replace(/-/g,"_")})),
     {k:"pctTop",h:"share_high_or_established",csv:r=>r.pctTop==null?"":(100*r.pctTop).toFixed(1)+"%"},{k:"works",h:"total_works_all_time"},{k:"h",h:"h_index"}]));
   draw();
 }
@@ -1655,9 +1721,10 @@ function formHTML(c){
   const chk=(label,res,evidence)=>`<tr><td>${esc(label)}</td><td><b>${esc(res)}</b></td><td>${evidence}</td></tr>`;
   const ixTxt=v=>v==="y"?"Yes":v==="n"?"Not found":"Verify manually";
   const authorRows=c.auths.map((a,i)=>{
-    const inst=(a.institutions||[]).map(x=>x.display_name).join("; ") || (a.raw_affiliation_strings||[])[0] || "";
+    const pd=a.aff ? paperDept(a, R.institution?.id, R.institution?.name) : {dept:"",college:""};
+    const inst=[(a.institutions||[]).map(x=>x.display_name).join("; ") || (a.raw_affiliation_strings||[])[0] || "", pd.college].filter(Boolean).join(" — ");
     return `<tr><td>${i+1}${a.is_corresponding?"*":""}</td><td>${esc(a.author?.display_name||"")}<div class="meta">${esc(String(a.author?.orcid||"").replace(/^https?:\/\/orcid\.org\//,""))}</div></td>
-      <td></td><td></td><td>${esc(inst)}</td><td></td><td>${a.aff?"Yes":"No"}</td><td></td><td>${esc(String(c.pcts[i]??"").replace(/(\.\d\d)\d+/,"$1"))}%</td><td>${c.pay[i]?esc(money(c.pay[i])):(((c.final==="eligible"||c.final==="approved")&&(a.aff||!R.payOnlyAffiliated)&&c.cat)?"0 (over per-author cap)":"—")}</td><td></td><td></td></tr>`;
+      <td></td><td></td><td>${esc(inst)}</td><td>${esc(pd.dept)}</td><td>${a.aff?"Yes":"No"}</td><td></td><td>${esc(String(c.pcts[i]??"").replace(/(\.\d\d)\d+/,"$1"))}%</td><td>${c.pay[i]?esc(money(c.pay[i])):(((c.final==="eligible"||c.final==="approved")&&(a.aff||!R.payOnlyAffiliated)&&c.cat)?"0 (over per-author cap)":"—")}</td><td></td><td></td></tr>`;
   }).join("");
   const metricRows=c.auths.map((a,i)=>{ const A=a.author?.id?S.authors.get(sid(a.author.id)):null;
     return `<tr><td>${i+1}</td><td>${esc(a.author?.display_name||"")}</td><td class="num">${fmt(A?.works_count??null)}</td><td class="num">${fmt(A?.cited_by_count??null)}</td><td class="num">${fmt(A?.summary_stats?.h_index??null)}</td></tr>`; }).join("");
@@ -1997,6 +2064,11 @@ function renderMgmt(){
   out.appendChild(fp);
   out.appendChild(rankingPanel(rows, st));
 
+  // Departments (from the address strings on each paper)
+  const instId=R.institution?.id, instName=R.institution?.name;
+  const dIdx=deptIndex(st.works, instId, instName);
+  for(const r of rows) r.depts=[...new Set(r.auths.filter(a=>a.aff).map(a=>{ const p=paperDept(a,instId,instName); return p.dept || (a.author?.id ? dIdx.get(sid(a.author.id))?.dept : "") || ""; }).filter(Boolean))];
+
   // Researchers
   const rp=document.createElement("div"); rp.className="panel";
   const ppl=new Map();
@@ -2005,13 +2077,44 @@ function renderMgmt(){
   const pRows=[...ppl.values()].map(o=>{ const rs=o.rs.map(x=>x.r); const n=rs.length; const b={}; for(const B of BANDS) b[B.id]=rs.filter(r=>r.band===B.id).length;
     return {...o, P:n, top10:rs.filter(r=>r.top10).length, fwci:median(rs.map(r=>r.fwci)), intl:rs.filter(r=>r.intl).length/n,
       ledN:o.rs.filter(x=>x.r.led && (x.r.w.corresponding_institution_ids?.length ? (x.r.auths[x.i].is_corresponding) : x.i===0)).length,
-      risk:b.risk, dmu:rs.filter(r=>r.dmuOk).length, bands:b}; });
+      risk:b.risk, dmu:rs.filter(r=>r.dmuOk).length, bands:b, dept:dIdx.get(o.id)?.dept||"", college:dIdx.get(o.id)?.college||""}; });
+
+  // By department
+  const dmap=new Map();
+  for(const r of rows) for(const d of r.depts){ const o=dmap.get(d)||{dept:d, papers:[], people:new Set(), college:new Map()}; o.papers.push(r); dmap.set(d,o); }
+  for(const pr of pRows) if(pr.dept){ const o=dmap.get(pr.dept)||{dept:pr.dept,papers:[],people:new Set(),college:new Map()}; o.people.add(pr.id); if(pr.college) o.college.set(pr.college,(o.college.get(pr.college)||0)+1); dmap.set(pr.dept,o); }
+  const dRows=[...dmap.values()].map(o=>({dept:o.dept, college:[...o.college].sort((a,b)=>b[1]-a[1])[0]?.[0]||"", people:o.people.size, P:o.papers.length,
+    top10:o.papers.length?o.papers.filter(r=>r.top10).length/o.papers.length:0, fwci:median(o.papers.map(r=>r.fwci)),
+    risk:o.papers.filter(r=>r.band==="risk").length, dmu:o.papers.filter(r=>r.dmuOk).length}));
+  const unknownPapers=rows.filter(r=>!r.depts.length).length;
+  if(!st.dept) st.dept="";
+  const dp=document.createElement("div"); dp.className="panel"; dp.id="mgmtDept";
+  dp.innerHTML=`<div class="toolbar"><h2 style="margin:0">By department</h2><span class="grow"></span><button class="small dl">Download CSV</button></div>
+    <p class="small muted" style="margin:0 0 8px">Read from the addresses authors print on their papers. ${unknownPapers?`${unknownPapers.toLocaleString()} paper${unknownPapers===1?"":"s"} name no department and are not counted here. `:""}Select a department to filter the researchers below.</p><div class="tw"></div>`;
+  const maxDP=Math.max(1,...dRows.map(r=>r.P));
+  table(dp.querySelector(".tw"), dRows, [
+    {k:"dept",h:"Department",html:r=>`<a href="#mgmtResearchers" data-dept="${esc(r.dept)}">${esc(r.dept)}</a>${r.college?`<div class="flagnote">${esc(r.college)}</div>`:""}`},
+    {k:"people",h:"Researchers",num:true},
+    {k:"P",h:"Papers",num:true,html:r=>`<span class="inbar" style="width:${Math.max(2,60*r.P/maxDP)}px"></span>${r.P}`},
+    {k:"top10",h:"Top 10% share",num:true,html:r=>(100*r.top10).toFixed(1)+"%"},
+    {k:"fwci",h:"Median FWCI",num:true},
+    {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">${r.risk}</b>`:`<span class="muted">0</span>`},
+    {k:"dmu",h:"Reward-eligible",num:true},
+  ], {sort:"P"});
+  dp.querySelector(".dl").onclick=()=>download(`departments_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(dRows, [
+    {k:"dept",h:"department"},{k:"college",h:"college_or_faculty"},{k:"people",h:"researchers"},{k:"P",h:"papers"},
+    {k:"top10",h:"top10_share",csv:r=>(100*r.top10).toFixed(1)},{k:"fwci",h:"median_fwci"},{k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
+  dp.addEventListener("click",e=>{ const a=e.target.closest("[data-dept]"); if(!a) return; e.preventDefault(); st.dept=a.dataset.dept; const sel=rp.querySelector(".dsel"); if(sel){ sel.value=st.dept; } rDraw(); rp.scrollIntoView({behavior:"smooth"}); });
+  if(dRows.length) out.appendChild(dp);
+  rp.id="mgmtResearchers";
   rp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Researchers</h2><span class="grow"></span>
     <label class="small"><input type="checkbox" class="rk"> only people with ⚠ risk papers</label>
+    <select class="dsel" style="max-width:260px"><option value="">All departments</option>${deptOptions(pRows).map(d=>`<option ${st.dept===d?"selected":""}>${esc(d)}</option>`).join("")}</select>
     <input class="af" placeholder="filter by name…" style="width:180px"><button class="small dl">Download CSV</button></div>
     <p class="small muted" style="margin:0 0 8px">Affiliated authors on the papers above. Per the Leiden Manifesto and DORA, use these figures to start conversations and spot integrity issues — not to rank or reward individuals on metrics alone.</p><div class="tw"></div>`;
   const rCols=[
     {k:"name",h:"Researcher",html:r=>`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>${r.orcid?`<div class="flagnote">${esc(r.orcid)}</div>`:""}`},
+    {k:"dept",h:"Department / college",sortv:r=>r.dept||"~",html:deptCell},
     {k:"P",h:"Papers",num:true},
     {k:"mix",h:"Band mix",sortv:r=>(r.bands.exc*4+r.bands.str*3+r.bands.std*2)/r.P,html:r=>`<div class="tierbar" style="height:10px;margin:4px 0;min-width:110px">${["exc","str","std","unv","risk"].filter(b=>r.bands[b]).map(b=>`<div title="${esc(BAND[b].label)}: ${r.bands[b]}" style="width:${100*r.bands[b]/r.P}%;background:${BAND[b].c}"></div>`).join("")}</div>`},
     {k:"top10",h:"Top 10% papers",num:true},
@@ -2021,11 +2124,12 @@ function renderMgmt(){
     {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">⚠ ${r.risk}</b>`:`<span class="muted">0</span>`},
     {k:"dmu",h:"Reward-eligible",num:true},
   ];
-  const rRows=()=>{ const q=norm(rp.querySelector(".af").value), rk=rp.querySelector(".rk").checked; return pRows.filter(r=>(!rk||r.risk)&&(!q||norm(r.name).includes(q))); };
+  const rRows=()=>{ const q=norm(rp.querySelector(".af").value), rk=rp.querySelector(".rk").checked; return pRows.filter(r=>(!rk||r.risk)&&(!st.dept||r.dept===st.dept)&&(!q||norm(r.name+" "+r.dept+" "+r.college).includes(q))); };
   const rDraw=()=>table(rp.querySelector(".tw"), rRows(), rCols, {sort:"P"});
-  rp.querySelector(".af").addEventListener("input",rDraw); rp.querySelector(".rk").addEventListener("change",rDraw); rDraw();
+  rp.querySelector(".af").addEventListener("input",rDraw); rp.querySelector(".rk").addEventListener("change",rDraw);
+  rp.querySelector(".dsel").addEventListener("change",e=>{ st.dept=e.target.value; rDraw(); }); rDraw();
   rp.querySelector(".dl").onclick=()=>download(`researchers_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(rRows(), [
-    {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"P",h:"papers"},
+    {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"dept",h:"department"},{k:"college",h:"college_or_faculty"},{k:"P",h:"papers"},
     ...BANDS.map(b=>({k:"b_"+b.id,h:"band_"+b.id,csv:r=>r.bands[b.id]})),{k:"top10",h:"top10_papers"},{k:"fwci",h:"median_fwci"},
     {k:"intl",h:"international_share",csv:r=>(100*r.intl).toFixed(1)},{k:"ledN",h:"as_corresponding"},{k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
   out.appendChild(rp);
@@ -2071,7 +2175,7 @@ function renderMgmt(){
     {k:"intl",h:"international",csv:r=>r.intl?"yes":"no"},{k:"led",h:"institution_led",csv:r=>r.led?"yes":"no"},{k:"oa",h:"open_access",csv:r=>r.oa?"yes":"no"},
     {k:"sc",h:"scopus",csv:r=>r.ix.scopus},{k:"pm",h:"pubmed",csv:r=>r.ix.pubmed},{k:"wos",h:"wos",csv:r=>r.ix.wos},
     {k:"dmu",h:"reward_category",csv:r=>r.dmuOk?r.cat.label:""},{k:"st",h:"reward_status",csv:r=>r.status},{k:"why",h:"reward_reasons",csv:r=>[...r.fails,...r.review].join("; ")},
-    {k:"nAff",h:"affiliated_authors"},{k:"aa",h:"affiliated_author_names",csv:r=>r.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join("; ")},
+    {k:"nAff",h:"affiliated_authors"},{k:"aa",h:"affiliated_author_names",csv:r=>r.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join("; ")},{k:"depts",h:"departments",csv:r=>(r.depts||[]).join("; ")},
   ]));
   pDraw();
   out.appendChild(pp);
