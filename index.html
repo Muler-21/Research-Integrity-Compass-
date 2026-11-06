@@ -65,6 +65,8 @@ details.settings[open] > summary::before{content:"▾ "}
 /* status */
 .status{display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--panel));border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));margin-bottom:14px;font-size:13.5px}
 .status.on{display:flex}
+#btnAddKey,#keyNoteBtn{white-space:nowrap;flex:none}
+.status.warn{background:color-mix(in srgb,var(--caution) 12%,var(--panel));border-color:color-mix(in srgb,var(--caution) 45%,var(--line))}
 .status.err{background:color-mix(in srgb,var(--flagged) 10%,var(--panel));border-color:color-mix(in srgb,var(--flagged) 40%,var(--line))}
 .spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 0.8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -229,6 +231,7 @@ details.settings > summary .setup-hint{font-family:var(--f-body);font-weight:400
 .tabs button:hover{color:var(--ink)}
 .tabdesc{margin:10px 0 16px;color:var(--muted);font-size:14.5px}
 
+.keynote{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between;margin:12px 0 0;padding:10px 14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--brass) 55%,var(--line));background:color-mix(in srgb,var(--brass) 10%,var(--panel));font-size:14px}
 /* empty states */
 .empty{display:flex;gap:16px;align-items:center;padding:24px;border:1.5px dashed var(--line);border-radius:14px;color:var(--muted);font-size:14.5px}
 .empty svg{width:42px;height:42px;flex:none;color:var(--accent)}
@@ -301,7 +304,7 @@ footer.site .am{color:#C5CFDF}
 <main>
   <ol class="steps" aria-label="How RIC works">
     <li><b>Choose an institution</b>Type its name in the dashboard. RIC finds every paper carrying its affiliation, including papers found only through the address text.</li>
-    <li><b>Add reference lists</b>Optional, in Setup: a predatory-journal watchlist, JUFO or Norwegian journal levels, and your national accredited list.</li>
+    <li><b>Add your key and lists</b>In Setup: your free OpenAlex API key, then optionally a predatory-journal watchlist, JUFO or Norwegian journal levels, and your national accredited list.</li>
     <li><b>Act on the results</b>Indicators, publisher rankings, an integrity risk register and printable verification forms, all downloadable as CSV.</li>
   </ol>
   <div class="panel">
@@ -312,9 +315,9 @@ footer.site .am{color:#C5CFDF}
           <h3>OpenAlex access</h3>
           <div class="row">
             <label class="f" style="flex:1">Free API key (from openalex.org/settings/api)
-              <input id="apiKey" type="password" placeholder="paste key — optional but 10× more daily budget" autocomplete="off"></label>
+              <input id="apiKey" type="password" placeholder="Paste your free OpenAlex API key" autocomplete="off"></label>
           </div>
-          <p class="small muted">Without a key OpenAlex allows a small daily budget (enough to try things). The key is kept only in this browser.</p>
+          <p class="small muted">Needed for complete results: without a key OpenAlex returns only the first page of each search. Get one free in a minute at <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a> (sign in, then copy the key). It is saved only in this browser.</p>
           <h3>Filters applied to every search</h3>
           <div class="row">
             <label class="f">From year<input id="y0" type="number" min="1900" max="2100" placeholder="any" style="width:100px"></label>
@@ -362,9 +365,10 @@ footer.site .am{color:#C5CFDF}
     <button role="tab" aria-selected="false" data-v="author" data-desc="Where one researcher publishes, grouped by journal tier."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 21c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>Researcher</button>
     <button role="tab" aria-selected="false" data-v="journal" data-desc="Who publishes in one or more journals, and who appears in several of them."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>Journals</button>
   </div>
+  <div class="keynote hidden" id="keyNote"><span><b>Add your free OpenAlex API key for complete results.</b> Without it, each search stops after the first page.</span><button class="small primary" id="keyNoteBtn">Add API key</button></div>
   <p class="tabdesc" id="tabDesc">Every paper of one institution, rated on international indicators, with publisher rankings and an integrity risk register.</p>
 
-  <div class="status" id="status"><div class="spin" id="spin"></div><span id="statusText"></span><span class="spacer"></span><button class="small" id="btnCancel">Stop</button></div>
+  <div class="status" id="status"><div class="spin" id="spin"></div><span id="statusText"></span><span class="spacer"></span><button class="small primary hidden" id="btnAddKey">Add API key</button><button class="small" id="btnCancel">Stop</button></div>
 
   <!-- MANAGEMENT -->
   <section class="view on" id="v-mgmt">
@@ -548,6 +552,12 @@ async function oa(path, params={}){
     if(!r.ok){
       let msg = r.statusText;
       try{ const j = await r.json(); msg = j.message || j.error || msg; }catch(e){}
+      if(r.status===401 || r.status===403 && /key/i.test(msg)){
+        const err=new ApiError(S.key
+          ? "OpenAlex didn't accept your API key. Check it in Setup (copy it again from openalex.org/settings/api)."
+          : "OpenAlex needs a free API key to return more than the first page of results. Add your key in Setup to get complete results.", r.status);
+        err.needsKey=true; throw err;
+      }
       throw new ApiError(`OpenAlex error ${r.status}: ${msg}`, r.status);
     }
     const j = await r.json();
@@ -572,6 +582,7 @@ async function groupBy(filter, field, maxGroups, extra={}){
     try{ j = await oa("/works", params); }
     catch(e){
       if(usePaging && e.status===400 && out.length===0){ usePaging=false; continue; }
+      if(e.needsKey && !S.key && out.length){ S.partial=true; break; }
       throw e;
     }
     if(total===null){ total = j.meta?.count ?? null; groupsCount = j.meta?.groups_count ?? null; }
@@ -792,18 +803,30 @@ function updChips(){
   $("#chipSpend").innerHTML=`OpenAlex spend: <b>$${S.spend.toFixed(4)}</b> · <b>${S.calls}</b> calls`;
   $("#chipKey").innerHTML=`API key: <b>${S.key?"set":"none"}</b>`;
 }
-function setStatus(t, kind){
-  const el=$("#status"); el.classList.add("on"); el.classList.toggle("err",kind==="err");
-  $("#spin").classList.toggle("hidden",kind==="err"||kind==="done");
-  $("#btnCancel").classList.toggle("hidden",kind==="err"||kind==="done");
+function setStatus(t, kind, keyAction){
+  const el=$("#status"); el.classList.add("on"); el.classList.toggle("err",kind==="err"); el.classList.toggle("warn",kind==="warn");
+  const still=kind==="err"||kind==="done"||kind==="warn";
+  $("#spin").classList.toggle("hidden",still);
+  $("#btnCancel").classList.toggle("hidden",still);
+  $("#btnAddKey").classList.toggle("hidden",!keyAction);
   $("#statusText").textContent=t;
+}
+function keyNote(){ const n=$("#keyNote"); if(n) n.classList.toggle("hidden", !!S.key); }
+function openKeySetup(){
+  const d=$("#settings"); d.open=true; d.scrollIntoView({behavior:"smooth",block:"start"});
+  setTimeout(()=>$("#apiKey").focus({preventScroll:true}),400);
 }
 function clearStatus(){ $("#status").classList.remove("on"); }
 async function run(fn){
   if(S.busy) return; S.busy=true; S.cancel=false;
   document.querySelectorAll("button.primary").forEach(b=>b.disabled=true);
-  try{ await fn(); clearStatus(); }
-  catch(e){ console.error(e); setStatus(e.message||String(e),"err"); }
+  S.partial=false;
+  try{
+    await fn();
+    if(S.partial) setStatus("These results are incomplete: without an API key OpenAlex only returns the first page of each search. Add your free key in Setup, then run again for complete results.","warn",true);
+    else clearStatus();
+  }
+  catch(e){ console.error(e); setStatus(e.message||String(e),"err",!!e.needsKey); }
   finally{ S.busy=false; document.querySelectorAll("button.primary").forEach(b=>b.disabled=false); }
 }
 function download(name, text){
@@ -1107,7 +1130,9 @@ async function listStaff(inst, who, minWorks, max){
   if(minWorks>1) f.push(`works_count:>${minWorks-1}`);
   const out=[]; let cursor="*", total=null;
   while(out.length<max){
-    const j=await oa("/authors",{filter:f.join(","), per_page:100, cursor, sort:undefined});
+    let j;
+    try{ j=await oa("/authors",{filter:f.join(","), per_page:100, cursor, sort:undefined}); }
+    catch(e){ if(e.needsKey && !S.key && out.length){ S.partial=true; break; } throw e; }
     if(total===null) total=j.meta?.count??null;
     for(const a of j.results||[]){ S.authors.set(sid(a.id),a); out.push(sid(a.id)); }
     setStatus(`Listing staff: ${out.length.toLocaleString()}${total!=null?` of ${total.toLocaleString()}`:""}…`);
@@ -1465,7 +1490,8 @@ async function fetchWorks(filter, cap=6000){
   while(out.length<cap){
     let j;
     try{ j=await oa("/works",{filter, per_page:200, cursor, select}); }
-    catch(e){ if(select && e.status===400 && !out.length){ select=undefined; continue; } throw e; }
+    catch(e){ if(select && e.status===400 && !out.length){ select=undefined; continue; }
+              if(e.needsKey && !S.key && out.length){ S.partial=true; break; } throw e; }
     out.push(...(j.results||[]));
     setStatus(`Fetching papers: ${out.length.toLocaleString()}${j.meta?.count!=null?` of ${j.meta.count.toLocaleString()}`:""}…`);
     cursor=j.meta?.next_cursor; if(!cursor || !(j.results||[]).length) break;
@@ -2064,7 +2090,11 @@ function rerender(){ renderStaff(); renderScan(); renderAuthor(); renderJournal(
 function legend(){ $("#legend").innerHTML=TIERS.map(t=>`<span style="--c:${t.c}">${esc(t.label)}</span>`).join(""); }
 function init(){
   S.key=store.get("key")||""; $("#apiKey").value=S.key;
-  $("#apiKey").addEventListener("change",e=>{ S.key=e.target.value.trim(); store.set("key",S.key); updChips(); });
+  const saveKey=e=>{ S.key=e.target.value.trim(); store.set("key",S.key); updChips(); keyNote(); };
+  $("#apiKey").addEventListener("input",saveKey); $("#apiKey").addEventListener("change",saveKey);
+  $("#btnAddKey").onclick=openKeySetup;
+  $("#keyNoteBtn").onclick=openKeySetup;
+  keyNote();
   for(const id of ["tHigh","tSolid","tLow","tVol"]){ const v=store.get(id); if(v) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>{ store.set(id,e.target.value); rerender(); }); }
   for(const id of ["y0","y1","wtype"]){ const v=store.get(id); if(v!==null) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>store.set(id,e.target.value)); }
   loadWatchFromStore(); loadLevels(); watchChanged(); levelsChanged();
