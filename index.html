@@ -578,7 +578,7 @@ function chunk(a,n){ const o=[]; for(let i=0;i<a.length;i+=n) o.push(a.slice(i,i
    so RIC works for everyone with no sign-up. */
 const BASIC_LIMIT = 10000;
 async function groupBy(filter, field, maxGroups, extra={}){
-  const out=[]; let cursor="*", page=1, total=null, groupsCount=null, usePaging=true, exhausted=false;
+  const out=[], seen=new Set(); let cursor="*", page=1, total=null, groupsCount=null, usePaging=true, exhausted=false;
   const cap=Math.min(10000, Math.max(maxGroups*5, 1000));
   while(true){
     const params = {filter, group_by:field, per_page:200, ...extra};
@@ -592,15 +592,18 @@ async function groupBy(filter, field, maxGroups, extra={}){
     }
     if(total===null){ total = j.meta?.count ?? null; groupsCount = j.meta?.groups_count ?? null; }
     const groups = j.group_by||[];
+    let added=0;
     for(const g of groups){
       if(!g.key || g.key==="unknown") continue;
-      out.push({id:sid(g.key), name:g.key_display_name, count:g.count});
+      const id=sid(g.key); if(seen.has(id)) continue; seen.add(id); added++;
+      out.push({id, name:g.key_display_name, count:g.count});
     }
     const next = j.meta?.next_cursor;
     if(!usePaging){ exhausted = groupsCount!=null ? out.length>=groupsCount : groups.length<200; break; }
     if(!S.key){
       const eff=+j.meta?.per_page||200;
-      if(!groups.length || groups.length<eff || (groupsCount!=null && out.length>=groupsCount)){ exhausted=true; break; }
+      if(!groups.length || (groupsCount!=null ? out.length>=groupsCount : groups.length<eff)){ exhausted=true; break; }
+      if(page>1 && !added){ S.partial=S.partial||"key"; break; }   // server ignored the page number
       if(out.length>=cap) break;
       page++; if(page*eff>BASIC_LIMIT){ S.partial=S.partial||"cap"; break; }
     } else {
