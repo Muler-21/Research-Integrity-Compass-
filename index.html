@@ -501,7 +501,7 @@ footer.site .am{color:#C5CFDF}
   </div>
   <div class="f-base">
     <span>Research Integrity Compass <span class="am">የምርምር ታማኝነት ኮምፓስ</span>, by Mulusew Kassa Bitew (<a href="https://orcid.org/0000-0001-6223-0037" target="_blank" rel="noopener">ORCID</a>). MIT licence.</span>
-    <span>Your API key and lists stay in this browser.</span>
+    <span>Your API key and lists stay in this browser. Visits are counted anonymously with <a href="https://www.goatcounter.com" target="_blank" rel="noopener">GoatCounter</a>: no cookies, no personal data.</span>
   </div>
 </footer>
 
@@ -838,8 +838,10 @@ function openKeySetup(){
   setTimeout(()=>$("#apiKey").focus({preventScroll:true}),400);
 }
 function clearStatus(){ $("#status").classList.remove("on"); }
+const TRACK_NAMES={doMgmt:"build-dashboard", doIncent:"screen-claims", doStaff:"find-staff", doScan:"tier-scan", doAuthor:"researcher-profile", doJournal:"journal-researchers"};
+function track(fnName){ const name=TRACK_NAMES[fnName]; try{ if(name && window.goatcounter && window.goatcounter.count) window.goatcounter.count({path:"ric-"+name, title:"RIC: "+name, event:true}); }catch(e){} }
 async function run(fn){
-  if(S.busy) return; S.busy=true; S.cancel=false;
+  if(S.busy) return; S.busy=true; S.cancel=false; track(fn.name);
   document.querySelectorAll("button.primary").forEach(b=>b.disabled=true);
   S.partial=false;
   try{
@@ -2294,5 +2296,6 @@ function init(){
 }
 init();
 </script>
+<script data-goatcounter="https://ambkidsjoy.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>

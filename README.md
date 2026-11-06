@@ -28,6 +28,8 @@ It uses the free [OpenAlex](https://openalex.org) API and runs entirely in the b
 
 **No account or API key is needed.** OpenAlex gives every visitor a small free daily allowance and up to 10,000 results per search, which covers a typical university dashboard. Heavy users can paste a free OpenAlex API key into **Setup** for ten times the allowance and no 10,000 limit. The key is stored only in that user's browser.
 
+**Privacy:** RIC has no accounts and sets no cookies. The only data collected is an anonymous count of page views and of which main tools are used (for example "Build dashboard"), through [GoatCounter](https://www.goatcounter.com). Searches, institution names, lists and keys are never sent anywhere except to OpenAlex for the lookup itself.
+
 ## Management dashboard (start here)
 
 For a university's research-management team. Pick the institution and a range of years. The dashboard collects **all** of its publications, using OpenAlex's institution links plus a text search of raw affiliations. It then reports:
