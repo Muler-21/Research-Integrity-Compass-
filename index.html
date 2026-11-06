@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Research Integrity Compass (RIC) — publication quality, integrity and reward screening for universities, built on OpenAlex.">
+<title>Research Integrity Compass (RIC) · የምርምር ታማኝነት ኮምፓስ</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#1b2430; --muted:#5d6b7a; --line:#e2e6eb; --accent:#1f5f8b; --accent-ink:#fff;
+  --high:#0f6b4f; --solid:#3b9c7a; --indexed:#6f8fb0; --unvetted:#9aa3ad; --caution:#d98c1f; --flagged:#c2362f; --other:#c9ced4; --none:#e4e7ea;
+  --radius:10px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#11161c; --panel:#18202a; --ink:#e7edf3; --muted:#9aa8b6; --line:#2a3542; --accent:#4d9bd1; --accent-ink:#0b1117; --other:#4a5562; --none:#2f3944; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
+header h1{font-size:18px;margin:0;letter-spacing:.2px}
+header h1 .am{font-weight:600;color:var(--muted);font-size:15px;margin-left:8px;font-family:"Noto Sans Ethiopic","Nyala","Abyssinica SIL",system-ui,sans-serif}
+header h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
+.spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;font-size:12.5px;color:var(--muted);background:var(--bg)}
+.chip b{color:var(--ink);font-weight:600}
+main{max-width:1240px;margin:0 auto;padding:20px 24px 60px}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 14px;border-radius:8px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.small{padding:3px 9px;font-size:12.5px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 40%,transparent);border-color:var(--accent)}
+textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:12.5px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+label.f > input, label.f > select{color:var(--ink);font-size:14px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px}
+.panel h2{font-size:15px;margin:0 0 10px}
+.panel h3{font-size:13.5px;margin:14px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
+.tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:10px 14px;color:var(--muted);font-weight:500}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.view{display:none}.view.on{display:block}
+details.settings > summary{cursor:pointer;font-weight:600;list-style:none}
+details.settings > summary::-webkit-details-marker{display:none}
+details.settings > summary::before{content:"▸ ";color:var(--muted)}
+details.settings[open] > summary::before{content:"▾ "}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+/* autocomplete */
+.ac{position:relative;min-width:300px;flex:1}
+.ac input{width:100%}
+.ac ul{position:absolute;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:30;max-height:320px;overflow:auto}
+.ac li{padding:6px 8px;border-radius:6px;cursor:pointer}
+.ac li:hover,.ac li.act{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.ac li .h{display:block;font-size:12px;color:var(--muted)}
+.picked{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.picked .chip{color:var(--ink)}
+.picked .chip button{border:none;background:none;padding:0 2px;color:var(--muted);cursor:pointer}
+/* status */
+.status{display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--panel));border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));margin-bottom:14px;font-size:13.5px}
+.status.on{display:flex}
+.status.err{background:color-mix(in srgb,var(--flagged) 10%,var(--panel));border-color:color-mix(in srgb,var(--flagged) 40%,var(--line))}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* tier bar + cards */
+.tierbar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:6px 0 4px;background:var(--none)}
+.tierbar > div{height:100%}
+.tiercards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px}
+.tc{border:1px solid var(--line);border-radius:8px;padding:10px 12px;border-left:5px solid var(--c);cursor:pointer;background:var(--panel)}
+.tc.sel{outline:2px solid var(--c)}
+.tc .n{font-size:20px;font-weight:700}
+.tc .l{font-size:12.5px;font-weight:600}
+.tc .s{font-size:12px;color:var(--muted)}
+.tc button{margin-top:6px}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;color:#fff;background:var(--c);white-space:nowrap}
+.tag.lt{color:#1b2430}
+.flagnote{font-size:11.5px;color:var(--muted)}
+/* tables */
+.tablewrap{overflow:auto;max-height:620px;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--panel);z-index:2;cursor:pointer;user-select:none;white-space:nowrap;font-size:12px;color:var(--muted)}
+th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0 8px}
+.toolbar .grow{flex:1}
+.card{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline}
+.card .big{font-size:18px;font-weight:700}
+.kv{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{color:var(--ink)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c);margin-right:5px;vertical-align:-1px}
+.warnbox{border-left:4px solid var(--caution);padding:8px 12px;background:color-mix(in srgb,var(--caution) 8%,var(--panel));border-radius:6px;font-size:12.5px;margin-top:10px}
+footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:var(--muted)}
+.hidden{display:none!important}
+/* management dashboard: quality bands = one-hue ordinal ramp (validated) + gray + critical */
+:root{--b-exc:#104281;--b-str:#2a78d6;--b-std:#86b6ef;--b-unv:#c9c8c2;--b-risk:#d03b3b}
+@media (prefers-color-scheme: dark){:root{--b-exc:#cde2fb;--b-str:#6da7ec;--b-std:#2a78d6;--b-unv:#4a4a46;--b-risk:#d03b3b}}
+.ychart{display:flex;align-items:flex-end;gap:10px;height:220px;padding:8px 4px 0;border-bottom:1px solid var(--line);position:relative}
+.ychart .col{flex:1;display:flex;flex-direction:column-reverse;gap:2px;height:100%;justify-content:flex-start;min-width:18px;max-width:64px}
+.ychart .seg{width:100%;border-radius:0}
+.ychart .col .seg:last-child{border-radius:4px 4px 0 0}
+.ychart .tot{font-size:11px;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.yaxis{display:flex;gap:10px;padding:4px 4px 0}.yaxis div{flex:1;min-width:18px;max-width:64px;text-align:center;font-size:11.5px;color:var(--muted)}
+.vtip{position:fixed;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.15);z-index:60;display:none}
+.band{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.band::before{content:"";width:10px;height:10px;border-radius:2px;background:var(--c)}
+.blegend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0}
+.kpi .sub{font-size:11.5px;color:var(--muted)}
+.inbar{height:8px;border-radius:0 4px 4px 0;background:var(--b-str);display:inline-block;vertical-align:middle;margin-right:6px}
+/* incentive module */
+.rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 28px;margin-top:6px}
+.rs-grid .full{grid-column:1/-1;display:grid;grid-template-columns:3fr 2fr;gap:28px}
+@media (max-width:900px){.rs-grid,.rs-grid .full{grid-template-columns:1fr}}
+.rs-grid td{vertical-align:middle}
+.rs-grid table input{width:90px;padding:4px 6px}
+.rs-grid table input.wide{width:100%}
+.rs-grid textarea{min-height:70px}
+.st{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+.st.eligible{background:var(--high)}.st.review{background:var(--caution)}.st.rejected{background:var(--flagged)}.st.approved{background:var(--solid)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.kpi .n{font-size:22px;font-weight:700}.kpi .l{font-size:12px;color:var(--muted)}
+.ck{font-family:var(--mono);font-size:12px;white-space:nowrap}
+.ck .y{color:var(--high);font-weight:700}.ck .n{color:var(--flagged);font-weight:700}.ck .q{color:var(--caution);font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#formModal{position:fixed;inset:0;background:rgba(10,15,20,.55);z-index:100;overflow:auto;padding:24px}
+#formModal .fm-bar{max-width:900px;margin:0 auto 10px;display:flex;gap:8px;align-items:center;color:#fff}
+#formBody{max-width:900px;margin:0 auto}
+.form{background:#fff;color:#111;padding:28px 34px;border-radius:6px;margin-bottom:18px;font-size:12.5px;line-height:1.45}
+.form h1{font-size:17px;margin:0 0 2px}.form h2{font-size:13px;margin:16px 0 6px;border-bottom:1.5px solid #111;padding-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+.form table{font-size:11.5px;border:1px solid #888}.form th,.form td{border:1px solid #aaa;padding:4px 6px;color:#111;background:#fff;position:static}
+.form th{font-weight:700;background:#f1f3f5;cursor:default}
+.form .meta{color:#444;font-size:11px}
+.form .box{display:inline-block;width:11px;height:11px;border:1px solid #333;vertical-align:-1px;margin-right:4px;text-align:center;line-height:10px;font-size:10px}
+.form .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:10px}.form .sig div{border-top:1px solid #333;padding-top:3px;margin-top:26px}
+@media print{
+  body > *:not(#formModal){display:none!important}
+  #formModal{position:static;background:none;padding:0;overflow:visible}
+  #formModal .fm-bar{display:none}
+  .form{border-radius:0;padding:0;margin:0;page-break-after:always}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Research Integrity Compass (RIC) <span class="am">የምርምር ታማኝነት ኮምፓስ</span><small>publication quality, integrity and reward screening for universities</small></h1>
+  <span class="spacer"></span>
+  <span class="chip" id="chipWatch">Watchlist: <b>0</b></span>
+  <span class="chip" id="chipKey">API key: <b>none</b></span>
+  <span class="chip" id="chipSpend" title="Sum of meta.cost_usd reported by OpenAlex this session">OpenAlex spend: <b>$0.0000</b> · <b>0</b> calls</span>
+</header>
+
+<main>
+  <div class="panel">
+    <details class="settings" id="settings">
+      <summary>Settings, data sources and watchlist</summary>
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <h3>OpenAlex access</h3>
+          <div class="row">
+            <label class="f" style="flex:1">Free API key (from openalex.org/settings/api)
+              <input id="apiKey" type="password" placeholder="paste key — optional but 10× more daily budget" autocomplete="off"></label>
+          </div>
+          <p class="small muted">Without a key OpenAlex allows a small daily budget (enough to try things). The key is kept only in this browser.</p>
+          <h3>Filters applied to every search</h3>
+          <div class="row">
+            <label class="f">From year<input id="y0" type="number" min="1900" max="2100" placeholder="any" style="width:100px"></label>
+            <label class="f">To year<input id="y1" type="number" min="1900" max="2100" placeholder="any" style="width:100px"></label>
+            <label class="f">Work types<select id="wtype"><option value="article|review">Articles + reviews</option><option value="">All types</option></select></label>
+          </div>
+          <h3>Tier thresholds</h3>
+          <div class="row">
+            <label class="f" title="OpenAlex summary_stats.2yr_mean_citedness — an impact-factor-like number">High impact: citedness ≥<input id="tHigh" type="number" step="0.1" value="5" style="width:90px"></label>
+            <label class="f">Established: citedness ≥<input id="tSolid" type="number" step="0.1" value="2" style="width:90px"></label>
+            <label class="f">“Low citations” below<input id="tLow" type="number" step="0.1" value="0.3" style="width:90px"></label>
+            <label class="f">“Mass output” works ≥<input id="tVol" type="number" step="100" value="3000" style="width:100px"></label>
+          </div>
+          <div class="legend" id="legend" style="margin-top:12px"></div>
+        </div>
+        <div>
+          <h3>Watchlist (journals / publishers you treat as predatory)</h3>
+          <p class="small muted" style="margin-top:0">Nothing is flagged until you load a list. Matching is by ISSN, exact journal title, or exact publisher name.</p>
+          <div class="row">
+            <button id="btnSPJ" title="Community list (Beall's successor), last maintained ~2021, hosted on GitHub">Load “Stop Predatory Journals” list</button>
+            <label class="btn">Upload CSV / TXT<input id="wlFile" type="file" accept=".csv,.txt,.tsv" class="hidden"></label>
+            <button id="btnWlClear">Clear</button>
+          </div>
+          <h3>International channel levels (optional, recommended)</h3>
+          <p class="small muted" style="margin-top:0">Official journal levels used by Nordic universities and funders — 2 = leading, 1 = approved, 0 = not approved. Export the CSV from the <a href="https://julkaisufoorumi.fi/en/publication-channel-search" target="_blank" rel="noopener">JUFO portal</a> or the <a href="https://kanalregister.hkdir.no/en" target="_blank" rel="noopener">Norwegian Register</a> and upload it; journals are matched by ISSN.</p>
+          <div class="row">
+            <label class="btn">Upload JUFO CSV<input id="lvJufo" type="file" accept=".csv,.txt,.tsv" class="hidden"></label>
+            <label class="btn">Upload Norwegian Register CSV<input id="lvNor" type="file" accept=".csv,.txt,.tsv" class="hidden"></label>
+            <button id="lvClear">Clear levels</button>
+          </div>
+          <div class="small muted" id="lvInfo" style="margin-top:4px"></div>
+          <label class="f" style="margin-top:10px">Or paste one entry per line — plain journal title, an ISSN, or <code>publisher: Name</code>
+            <textarea id="wlPaste" placeholder="publisher: Example Predatory Press&#10;International Journal of Example Studies&#10;1234-5678"></textarea></label>
+          <div class="row" style="margin-top:6px"><button id="btnWlAdd">Add pasted entries</button><span class="small muted" id="wlInfo"></span></div>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-v="mgmt">Management dashboard</button>
+    <button role="tab" aria-selected="false" data-v="staff">Organization staff</button>
+    <button role="tab" aria-selected="false" data-v="incentive">Incentive screening</button>
+    <button role="tab" aria-selected="false" data-v="scan">Tier scan</button>
+    <button role="tab" aria-selected="false" data-v="author">Researcher → journals</button>
+    <button role="tab" aria-selected="false" data-v="journal">Journals → researchers</button>
+  </div>
+
+  <div class="status" id="status"><div class="spin" id="spin"></div><span id="statusText"></span><span class="spacer"></span><button class="small" id="btnCancel">Stop</button></div>
+
+  <!-- MANAGEMENT -->
+  <section class="view on" id="v-mgmt">
+    <div class="panel">
+      <h2>University publication dashboard</h2>
+      <p class="small muted" style="margin-top:0">Pulls every publication carrying the institution's affiliation, rates it with international research-assessment indicators (field-normalised citation impact, top-10% papers, collaboration, open access, venue indexing, integrity), and applies the institution's own reward rules from the <b>Publication incentive</b> tab.</p>
+      <div class="row">
+        <div class="ac" id="acMgmtInst"><label class="f">Institution<input placeholder="e.g. Debre Markos University"></label></div>
+        <label class="f">From year<input id="mY0" type="number" style="width:100px"></label>
+        <label class="f">To year<input id="mY1" type="number" style="width:100px"></label>
+        <label class="f">Max papers<select id="mMax"><option>2000</option><option selected>6000</option><option>20000</option></select></label>
+        <button class="primary" id="btnMgmt">Build dashboard</button>
+      </div>
+      <div class="picked" id="pickedMgmtInst"></div>
+    </div>
+    <div id="mgmtOut"></div>
+  </section>
+
+  <!-- STAFF -->
+  <section class="view" id="v-staff">
+    <div class="panel">
+      <h2>Everyone at an organization, and where each person publishes</h2>
+      <p class="small muted" style="margin-top:0">Lists the organization's researchers, then counts each person's papers (published with this affiliation, in your year range) by journal tier.</p>
+      <div class="row">
+        <div class="ac" id="acStaffInst"><label class="f">Organization<input placeholder="e.g. University of Molise, ILRI, Wageningen University"></label></div>
+        <label class="f">Who counts as staff<select id="staffWho"><option value="current">Current (latest affiliation)</option><option value="any">Current + former</option></select></label>
+        <label class="f">Min. works on profile<select id="staffMin"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option><option value="10">10</option></select></label>
+        <label class="f">Max people<select id="staffMax"><option>500</option><option selected>2000</option><option>5000</option></select></label>
+        <button class="primary" id="btnStaff">Find staff</button>
+      </div>
+      <div class="picked" id="pickedStaffInst"></div>
+    </div>
+    <div id="staffOut"></div>
+  </section>
+
+  <!-- INCENTIVE -->
+  <section class="view" id="v-incentive">
+    <div class="panel">
+      <h2>Publication incentive screening</h2>
+      <p class="small muted" style="margin-top:0">Finds every paper published with the institution's affiliation in the claim window, checks it against the reward rules (indexing, journal integrity, retraction, affiliation, duplicate claims), computes each author's payment, and produces a pre-filled verification form. Start from a preset and adjust — rules can be exported and shared.</p>
+      <div class="row">
+        <label class="f">Rule set<select id="rsPreset"><option value="dmu">Debre Markos University — 2026/27 call</option><option value="blank">Blank template</option></select></label>
+        <button id="rsLoad">Load preset</button>
+        <button id="rsExport">Download rules JSON</button>
+        <label class="btn">Import rules JSON<input id="rsImport" type="file" accept=".json" class="hidden"></label>
+        <span class="spacer"></span>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="ac" id="acIncInst"><label class="f">Institution (OpenAlex)<input placeholder="e.g. Debre Markos University"></label></div>
+      </div>
+      <div class="picked" id="pickedIncInst"></div>
+      <div id="rsEditor"></div>
+      <div class="row" style="margin-top:14px"><button class="primary" id="btnIncent">Screen publications</button><span class="small muted" id="rsSaved"></span></div>
+    </div>
+    <div id="incOut"></div>
+  </section>
+
+  <!-- SCAN -->
+  <section class="view" id="v-scan">
+    <div class="panel">
+      <h2>Which journals does a community publish in — and who publishes in each tier?</h2>
+      <p class="small muted" style="margin-top:0">Set any combination; all are combined with AND. Example: institution = your university, years 2020–2026.</p>
+      <div class="row">
+        <div class="ac" id="acInst"><label class="f">Institution<input placeholder="e.g. University of Molise"></label></div>
+        <label class="f">Country (ISO-2)<input id="scanCountry" placeholder="e.g. IT" maxlength="2" style="width:110px;text-transform:uppercase"></label>
+        <label class="f" style="flex:1;min-width:220px">Keyword search in titles/abstracts<input id="scanSearch" placeholder="e.g. cattle genomics"></label>
+        <label class="f">Max journals<select id="scanMax"><option>200</option><option selected>600</option><option>1000</option><option>2000</option></select></label>
+        <button class="primary" id="btnScan">Scan</button>
+      </div>
+      <div class="picked" id="pickedInst"></div>
+    </div>
+    <div id="scanOut"></div>
+  </section>
+
+  <!-- AUTHOR -->
+  <section class="view" id="v-author">
+    <div class="panel">
+      <h2>Where does a researcher publish?</h2>
+      <div class="row">
+        <div class="ac" id="acAuthor"><label class="f">Researcher (name or ORCID)<input placeholder="e.g. Jane Doe"></label></div>
+        <button class="primary" id="btnAuthor">Profile</button>
+      </div>
+      <div class="picked" id="pickedAuthor"></div>
+    </div>
+    <div id="authorOut"></div>
+  </section>
+
+  <!-- JOURNAL -->
+  <section class="view" id="v-journal">
+    <div class="panel">
+      <h2>Who publishes in these journals?</h2>
+      <p class="small muted" style="margin-top:0">Add one or several journals (e.g. a top journal and a suspected predatory one) to list and compare their authors.</p>
+      <div class="row">
+        <div class="ac" id="acSource"><label class="f">Journal (title or ISSN)<input placeholder="e.g. Genetics Selection Evolution"></label></div>
+        <label class="f">Max researchers / journal<select id="jMax"><option>200</option><option selected>500</option><option>1000</option><option>2000</option></select></label>
+        <button class="primary" id="btnJournal">List researchers</button>
+      </div>
+      <div class="picked" id="pickedSource"></div>
+    </div>
+    <div id="journalOut"></div>
+  </section>
+</main>
+
+<div id="formModal" class="hidden" role="dialog" aria-modal="true">
+  <div class="fm-bar"><b>Verification form</b><span class="spacer"></span><button id="fmPrint" class="primary">Print / save as PDF</button><button id="fmClose">Close</button></div>
+  <div id="formBody"></div>
+</div>
+
+<footer>
+  <p><b>Read before acting on results.</b> Tiers are automated signals built from OpenAlex metadata (citation rates, CWTS-core / Scopus / DOAJ indexing) and whatever watchlist you load. A flag is not proof a journal is predatory, and publishing in one is not misconduct: authors are often deceived, journals get hijacked or cloned, and title matches can be wrong. Verify each case (journal website, DOAJ, publisher, Think.Check.Submit) before drawing conclusions, and don't publish lists of named researchers on this basis alone.</p>
+  <p>Data: <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Optional watchlist: <a href="https://github.com/stop-predatory-journals/stop-predatory-journals.github.io" target="_blank" rel="noopener">Stop Predatory Journals</a> (MIT) or your own list.</p>
+</footer>
+
+<script>
+"use strict";
+/* ---------------- constants & state ---------------- */
+const API = "https://api.openalex.org";
+const SPJ = "https://raw.githubusercontent.com/stop-predatory-journals/stop-predatory-journals.github.io/master/_data/";
+const TIERS = [
+  {id:"high",     label:"High impact",            c:"var(--high)",     light:false},
+  {id:"solid",    label:"Established",            c:"var(--solid)",    light:false},
+  {id:"indexed",  label:"Indexed, lower impact",  c:"var(--indexed)",  light:false},
+  {id:"unvetted", label:"Not in any index",       c:"var(--unvetted)", light:false},
+  {id:"caution",  label:"Warning signals",        c:"var(--caution)",  light:false},
+  {id:"flagged",  label:"On watchlist",           c:"var(--flagged)",  light:false},
+  {id:"other",    label:"Repository / conf. / book", c:"var(--other)", light:true},
+  {id:"none",     label:"No journal recorded",    c:"var(--none)",     light:true},
+];
+const TIER = Object.fromEntries(TIERS.map((t,i)=>[t.id,{...t,rank:i}]));
+const S = {
+  key:"", spend:0, calls:0, cancel:false, busy:false,
+  watch:{journals:new Map(), publishers:new Map(), issns:new Map()},
+  sources:new Map(), authors:new Map(),
+  picked:{mgmtInst:[], staffInst:[], incInst:[], inst:[], author:[], source:[]},
+};
+const $ = (s,r=document)=>r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sid = u => String(u||"").replace(/^https?:\/\/openalex\.org\//i,"");
+const fmt = n => n==null||Number.isNaN(n) ? "–" : (typeof n==="number" ? (Number.isInteger(n)? n.toLocaleString() : n.toFixed(2)) : n);
+const store = {
+  get(k){ try{ return localStorage.getItem("jts:"+k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem("jts:"+k,v); }catch(e){} },
+};
+const T = () => ({
+  high:+$("#tHigh").value||5, solid:+$("#tSolid").value||2, low:+$("#tLow").value||0.3, vol:+$("#tVol").value||3000,
+});
+
+/* ---------------- OpenAlex client ---------------- */
+class ApiError extends Error{ constructor(msg,status){ super(msg); this.status=status; } }
+async function oa(path, params={}){
+  if(S.cancel) throw new ApiError("Stopped.",0);
+  const u = new URL(API+path);
+  for(const [k,v] of Object.entries(params)) if(v!==undefined && v!==null && v!=="") u.searchParams.set(k,v);
+  if(S.key) u.searchParams.set("api_key",S.key);
+  let wait = 1200;
+  for(let attempt=0; attempt<4; attempt++){
+    let r;
+    try{ r = await fetch(u.toString()); }
+    catch(e){ throw new ApiError("Network error reaching OpenAlex — are you online? (This page must be opened in a normal browser tab.)",0); }
+    S.calls++;
+    if(r.status===429){
+      if(attempt<3){ await sleep(wait); wait*=2; continue; }
+      throw new ApiError("OpenAlex rate limit / daily budget reached. Add a free API key in Settings, or try again tomorrow.",429);
+    }
+    if(!r.ok){
+      let msg = r.statusText;
+      try{ const j = await r.json(); msg = j.message || j.error || msg; }catch(e){}
+      throw new ApiError(`OpenAlex error ${r.status}: ${msg}`, r.status);
+    }
+    const j = await r.json();
+    if(j && j.meta && typeof j.meta.cost_usd==="number") S.spend += j.meta.cost_usd;
+    updChips();
+    return j;
+  }
+}
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+function chunk(a,n){ const o=[]; for(let i=0;i<a.length;i+=n) o.push(a.slice(i,i+n)); return o; }
+
+/* group works by a field, paging with cursor where supported */
+/* Cursor-paged group_by pages may not come back in count order, so we collect
+   up to a cap, then sort by count and keep the top `maxGroups`. */
+async function groupBy(filter, field, maxGroups, extra={}){
+  const out=[]; let cursor="*", total=null, groupsCount=null, usePaging=true, exhausted=false;
+  const cap=Math.min(10000, Math.max(maxGroups*5, 1000));
+  while(true){
+    const params = {filter, group_by:field, per_page:200, ...extra};
+    if(usePaging) params.cursor = cursor;
+    let j;
+    try{ j = await oa("/works", params); }
+    catch(e){
+      if(usePaging && e.status===400 && out.length===0){ usePaging=false; continue; }
+      throw e;
+    }
+    if(total===null){ total = j.meta?.count ?? null; groupsCount = j.meta?.groups_count ?? null; }
+    const groups = j.group_by||[];
+    for(const g of groups){
+      if(!g.key || g.key==="unknown") continue;
+      out.push({id:sid(g.key), name:g.key_display_name, count:g.count});
+    }
+    const next = j.meta?.next_cursor;
+    if(!usePaging){ exhausted = groupsCount!=null ? out.length>=groupsCount : groups.length<200; break; }
+    if(!next || !groups.length){ exhausted=true; break; }
+    if(out.length>=cap) break;
+    cursor = next;
+    setStatus(`Collected ${out.length.toLocaleString()} groups${groupsCount?` of ${groupsCount.toLocaleString()}`:""}…`);
+  }
+  out.sort((a,b)=>b.count-a.count);
+  return {groups:out.slice(0,maxGroups), totalWorks:total, groupsCount: groupsCount ?? (exhausted?out.length:null),
+          complete: exhausted && out.length<=maxGroups, exhausted};
+}
+
+async function fetchSources(ids){
+  const need = ids.filter(id=>!S.sources.has(id));
+  const parts = chunk(need,100);
+  for(let i=0;i<parts.length;i++){
+    setStatus(`Fetching journal records ${Math.min((i+1)*100,need.length)} / ${need.length}…`);
+    const j = await oa("/sources", {filter:"openalex_id:"+parts[i].join("|"), per_page:100});
+    for(const s of j.results||[]) S.sources.set(sid(s.id), s);
+  }
+  return ids.map(id=>S.sources.get(id)).filter(Boolean);
+}
+async function fetchAuthors(ids){
+  const need = ids.filter(id=>!S.authors.has(id));
+  const parts = chunk(need,100);
+  for(let i=0;i<parts.length;i++){
+    setStatus(`Fetching researcher records ${Math.min((i+1)*100,need.length)} / ${need.length}…`);
+    const j = await oa("/authors", {filter:"openalex_id:"+parts[i].join("|"), per_page:100});
+    for(const a of j.results||[]) S.authors.set(sid(a.id), a);
+  }
+}
+
+/* shared works filters */
+function baseFilters(){
+  const f=[];
+  const y0=$("#y0").value.trim(), y1=$("#y1").value.trim();
+  if(y0||y1) f.push(`publication_year:${y0||"1800"}-${y1||"2100"}`);
+  const wt=$("#wtype").value; if(wt) f.push(`type:${wt}`);
+  return f;
+}
+
+/* ---------------- classification ---------------- */
+function norm(s){
+  return String(s||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"")
+    .replace(/&/g," and ").replace(/^the\s+/,"").replace(/[^a-z0-9]+/g," ").trim();
+}
+const normIssn = s => String(s||"").toUpperCase().replace(/[^0-9X]/g,"");
+function watchMatch(src){
+  const W=S.watch;
+  for(const i of [src.issn_l, ...(src.issn||[])]){
+    const k=normIssn(i); if(k && W.issns.has(k)) return `ISSN ${i} on watchlist (${W.issns.get(k)})`;
+  }
+  const t=norm(src.display_name);
+  if(t && W.journals.has(t)) return `Title matches watchlist (${W.journals.get(t)})`;
+  for(const alt of (src.alternate_titles||[])){ const a=norm(alt); if(a && W.journals.has(a)) return `Alternate title matches watchlist (${W.journals.get(a)})`; }
+  const p=norm(src.host_organization_name);
+  if(p && W.publishers.has(p)) return `Publisher “${src.host_organization_name}” on watchlist (${W.publishers.get(p)})`;
+  return null;
+}
+function classify(src){
+  if(!src) return {tier:"none", reasons:[]};
+  const th=T();
+  const c = src.summary_stats?.["2yr_mean_citedness"];
+  const idx = [];
+  if(src.is_core) idx.push("CWTS core");
+  if(src.is_indexed_in_scopus) idx.push("Scopus");
+  if(src.is_in_doaj) idx.push("DOAJ");
+  const wl = watchMatch(src);
+  if(wl) return {tier:"flagged", reasons:[wl], idx};
+  if(src.type && src.type!=="journal") return {tier:"other", reasons:[`Source type: ${src.type}`], idx};
+  if(c!=null && c>=th.high) return {tier:"high", reasons:[`2-yr mean citedness ${c.toFixed(2)} ≥ ${th.high}`], idx};
+  if(idx.length && c!=null && c>=th.solid) return {tier:"solid", reasons:[`In ${idx.join(", ")}; citedness ${c.toFixed(2)}`], idx};
+  if(idx.length) return {tier:"indexed", reasons:[`In ${idx.join(", ")}; citedness ${c==null?"n/a":c.toFixed(2)}`], idx};
+  const sig=[];
+  if(src.is_oa) sig.push("Fully open-access but not in DOAJ");
+  if(c!=null && c<th.low && (src.works_count||0)>=th.vol) sig.push(`${(src.works_count||0).toLocaleString()} works but citedness ${c.toFixed(2)}`);
+  if(src.apc_usd && c!=null && c<th.low) sig.push(`Charges APC ($${src.apc_usd}) with very low citations`);
+  if(sig.length) return {tier:"caution", reasons:sig, idx};
+  return {tier:"unvetted", reasons:["Not in CWTS core, Scopus or DOAJ"], idx};
+}
+function tierTag(id){ const t=TIER[id]; return `<span class="tag${t.light?" lt":""}" style="--c:${t.c}">${esc(t.label)}</span>`; }
+
+/* ---------------- watchlist ---------------- */
+function parseCSV(text){
+  const first=(text.split(/\r?\n/,1)[0]||"");
+  const cnt=c=>first.split(c).length-1;
+  const delim=[",",";","\t"].sort((a,b)=>cnt(b)-cnt(a))[0];
+  const rows=[]; let row=[], f="", q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ f+='"'; i++; } else q=false; } else f+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===delim){ row.push(f); f=""; }
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&text[i+1]==='\n') i++; row.push(f); rows.push(row); row=[]; f=""; }
+    else f+=ch;
+  }
+  if(f!==""||row.length){ row.push(f); rows.push(row); }
+  return rows.filter(r=>r.some(c=>c.trim()!==""));
+}
+function addEntry(kind, value, label){
+  const W=S.watch; value=String(value||"").trim(); if(!value) return 0;
+  if(kind==="issn"){ const k=normIssn(value); if(k.length!==8) return 0; W.issns.set(k,label); return 1; }
+  const k=norm(value); if(k.length<4) return 0;
+  (kind==="publisher"?W.publishers:W.journals).set(k,label); return 1;
+}
+const ISSN_RE=/^\s*\d{4}-?\d{3}[\dXx]\s*$/;
+function ingestTable(text, defaultKind, label){
+  const rows=parseCSV(text); if(!rows.length) return 0;
+  const head=rows[0].map(h=>h.trim().toLowerCase());
+  const looksHeader = head.some(h=>/^(name|journal|journal name|title|publisher|issn|e-?issn|p-?issn|url|abbr)$/.test(h));
+  let nameCol=0, issnCols=[], kind=defaultKind, body=rows;
+  if(looksHeader){
+    body=rows.slice(1);
+    const pi=head.findIndex(h=>/publisher/.test(h)), ji=head.findIndex(h=>/^(name|journal|journal name|title)$/.test(h));
+    if(pi>=0 && ji<0){ nameCol=pi; kind="publisher"; } else nameCol = ji>=0 ? ji : 0;
+    issnCols = head.map((h,i)=>/issn/.test(h)?i:-1).filter(i=>i>=0);
+  }
+  let n=0;
+  for(const r of body){
+    const v=(r[nameCol]||"").trim();
+    if(ISSN_RE.test(v)) n+=addEntry("issn",v,label); else n+=addEntry(kind,v,label);
+    for(const i of issnCols) for(const part of String(r[i]||"").split(/[;,\s]+/)) if(ISSN_RE.test(part)) n+=addEntry("issn",part,label);
+  }
+  return n;
+}
+function ingestLines(text,label){
+  let n=0;
+  for(let line of text.split(/\r?\n/)){
+    line=line.trim(); if(!line||line.startsWith("#")) continue;
+    const m=line.match(/^(publisher|journal|issn)\s*:\s*(.+)$/i);
+    if(m) n+=addEntry(m[1].toLowerCase(), m[2], label);
+    else if(ISSN_RE.test(line)) n+=addEntry("issn",line,label);
+    else n+=addEntry("journal",line,label);
+  }
+  return n;
+}
+function watchSize(){ const W=S.watch; return W.journals.size+W.publishers.size+W.issns.size; }
+function watchChanged(msg){
+  const W=S.watch;
+  $("#chipWatch").innerHTML=`Watchlist: <b>${watchSize().toLocaleString()}</b>`;
+  $("#wlInfo").textContent = msg || `${W.journals.size} journals · ${W.publishers.size} publishers · ${W.issns.size} ISSNs`;
+  try{ store.set("watch", JSON.stringify({j:[...W.journals],p:[...W.publishers],i:[...W.issns]})); }catch(e){}
+  rerender();
+}
+function loadWatchFromStore(){
+  try{
+    const o=JSON.parse(store.get("watch")||"null"); if(!o) return;
+    S.watch.journals=new Map(o.j||[]); S.watch.publishers=new Map(o.p||[]); S.watch.issns=new Map(o.i||[]);
+  }catch(e){}
+}
+
+/* ---------------- international channel levels (JUFO / Norwegian Register) ---------------- */
+S.levels = {jufo:new Map(), nor:new Map()};
+const LV_NAME = {jufo:"JUFO (Finland)", nor:"Norwegian Register"};
+function parseLevel(v){
+  v=String(v||"").trim(); if(!v) return null;
+  if(/^x$/i.test(v)) return "X";
+  const m=v.match(/[0-3]/); if(!m) return null;
+  return Math.min(2, +m[0]);           // old JUFO level 3 → today's top level 2
+}
+function ingestLevels(text, key){
+  const rows=parseCSV(text); if(rows.length<2) return 0;
+  const head=rows[0].map(h=>h.trim().toLowerCase());
+  const issnCols=head.map((h,i)=>/issn/.test(h)?i:-1).filter(i=>i>=0);
+  const lvCands=head.map((h,i)=>({h,i})).filter(o=>/(level|niv[aå]|taso|luokitus|classification|jufo)/.test(o.h) && !/issn|title|name|nimi|date|change|endring|history/.test(o.h));
+  if(!issnCols.length || !lvCands.length) return -1;
+  const yr=o=>+((o.h.match(/(19|20)\d\d/)||[0])[0]);
+  const lvCol=lvCands.sort((a,b)=>yr(b)-yr(a) || b.i-a.i)[0].i;
+  const m=S.levels[key]; let n=0;
+  for(const r of rows.slice(1)){
+    const lv=parseLevel(r[lvCol]); if(lv===null) continue;
+    for(const i of issnCols) for(const part of String(r[i]||"").split(/[;,\s]+/)) if(ISSN_RE.test(part)){ m.set(normIssn(part),lv); n++; }
+  }
+  return n;
+}
+function levelsChanged(msg){
+  $("#lvInfo").textContent = msg || [S.levels.jufo.size?`JUFO: ${S.levels.jufo.size.toLocaleString()} ISSNs`:"", S.levels.nor.size?`Norwegian Register: ${S.levels.nor.size.toLocaleString()} ISSNs`:""].filter(Boolean).join(" · ") || "No official level lists loaded — the open estimate is used.";
+  try{ store.set("levels", JSON.stringify({jufo:[...S.levels.jufo], nor:[...S.levels.nor]})); }catch(e){}
+  rerender();
+}
+function loadLevels(){ try{ const o=JSON.parse(store.get("levels")||"null"); if(o){ S.levels.jufo=new Map(o.jufo||[]); S.levels.nor=new Map(o.nor||[]); } }catch(e){} }
+
+/* Channel level for a journal: official list first (JUFO, then Norway), else an open estimate.
+   Open estimate: X = watchlist / warning signals · 2 = indexed and 2-yr citedness ≥ "High impact" threshold
+                  · 1 = indexed (Scopus, WoS list, DOAJ, CWTS core) · 0 = not indexed. */
+function channelLevel(src){
+  if(!src) return {lvl:null, source:"no venue", open:null};
+  const issns=[src.issn_l, ...(src.issn||[])].filter(Boolean).map(normIssn);
+  const look=m=>{ for(const i of issns) if(m.has(i)) return m.get(i); return null; };
+  const cl=classify(src);
+  const c=src.summary_stats?.["2yr_mean_citedness"];
+  const indexed = src.is_core || src.is_in_doaj || src.is_indexed_in_scopus===true || (R && (listHit(src,R.lists.wos)||listHit(src,R.lists.scopus)));
+  let open;
+  if(cl.tier==="flagged"||cl.tier==="caution") open="X";
+  else if(src.type && src.type!=="journal" && src.type!=="book series") open=0;
+  else if(indexed && c!=null && c>=T().high) open=2;
+  else if(indexed) open=1;
+  else open=0;
+  const j=look(S.levels.jufo), n=look(S.levels.nor);
+  if(j!==null) return {lvl:j, source:LV_NAME.jufo, open, jufo:j, nor:n};
+  if(n!==null) return {lvl:n, source:LV_NAME.nor, open, jufo:j, nor:n};
+  return {lvl:open, source:"open estimate", open, jufo:j, nor:n};
+}
+const LVL_C = {2:"var(--b-exc)", 1:"var(--b-str)", 0:"var(--b-unv)", X:"var(--b-risk)", "–":"var(--none)"};
+const lvlTag = (l,src) => l===null||l===undefined ? `<span class="muted small">–</span>` :
+  `<span class="band" style="--c:${LVL_C[l]}" title="${esc(src||"")}">${l==="X"?"⚠ X":"Level "+l}</span>`;
+
+/* ---------------- UI helpers ---------------- */
+function updChips(){
+  $("#chipSpend").innerHTML=`OpenAlex spend: <b>$${S.spend.toFixed(4)}</b> · <b>${S.calls}</b> calls`;
+  $("#chipKey").innerHTML=`API key: <b>${S.key?"set":"none"}</b>`;
+}
+function setStatus(t, kind){
+  const el=$("#status"); el.classList.add("on"); el.classList.toggle("err",kind==="err");
+  $("#spin").classList.toggle("hidden",kind==="err"||kind==="done");
+  $("#btnCancel").classList.toggle("hidden",kind==="err"||kind==="done");
+  $("#statusText").textContent=t;
+}
+function clearStatus(){ $("#status").classList.remove("on"); }
+async function run(fn){
+  if(S.busy) return; S.busy=true; S.cancel=false;
+  document.querySelectorAll("button.primary").forEach(b=>b.disabled=true);
+  try{ await fn(); clearStatus(); }
+  catch(e){ console.error(e); setStatus(e.message||String(e),"err"); }
+  finally{ S.busy=false; document.querySelectorAll("button.primary").forEach(b=>b.disabled=false); }
+}
+function download(name, text){
+  const b=new Blob([text],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+function toCSV(rows, cols){
+  const q=v=>{ v=v==null?"":String(v); return /[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v; };
+  return [cols.map(c=>q(c.h)).join(","), ...rows.map(r=>cols.map(c=>q(c.csv?c.csv(r):r[c.k])).join(","))].join("\n");
+}
+function slug(s){ return norm(s).replace(/\s+/g,"-").slice(0,50)||"export"; }
+
+/* generic sortable table */
+function table(container, rows, cols, opts={}){
+  let sortK = opts.sort || cols.find(c=>c.num)?.k, dir=opts.dir ?? -1;
+  const draw=()=>{
+    const col=cols.find(c=>c.k===sortK);
+    const val=r=>col?.sortv?col.sortv(r):r[sortK];
+    const sorted=[...rows].sort((a,b)=>{ const x=val(a), y=val(b); if(x==null) return 1; if(y==null) return -1; return (x>y?1:x<y?-1:0)*dir; });
+    container.innerHTML=`<div class="tablewrap"><table><thead><tr>${cols.map(c=>`<th class="${c.num?"num":""}" data-k="${c.k}">${esc(c.h)}${c.k===sortK?(dir<0?" ↓":" ↑"):""}</th>`).join("")}</tr></thead><tbody>${
+      sorted.map(r=>`<tr>${cols.map(c=>`<td class="${c.num?"num":""}">${c.html?c.html(r):esc(fmt(r[c.k]))}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${cols.length}" class="muted">Nothing to show.</td></tr>`
+    }</tbody></table></div>`;
+    container.querySelectorAll("th").forEach(th=>th.onclick=()=>{ const k=th.dataset.k; if(k===sortK) dir=-dir; else { sortK=k; dir=cols.find(c=>c.k===k)?.num?-1:1; } draw(); });
+  };
+  draw();
+}
+
+/* tier summary (bar + cards) */
+function tierSummary(journalRows, noneWorks, onPick, selected, opts={}){
+  const agg={}; for(const t of TIERS) agg[t.id]={journals:0, works:0};
+  for(const r of journalRows){ agg[r.tier].journals++; agg[r.tier].works+=r.count; }
+  if(noneWorks>0) agg.none.works+=noneWorks;
+  const tot = Object.values(agg).reduce((s,a)=>s+a.works,0)||1;
+  const bar = TIERS.filter(t=>agg[t.id].works>0).map(t=>`<div title="${esc(t.label)}: ${agg[t.id].works.toLocaleString()} works (${(100*agg[t.id].works/tot).toFixed(1)}%)" style="width:${100*agg[t.id].works/tot}%;background:${t.c}"></div>`).join("");
+  const cards = TIERS.filter(t=>agg[t.id].works>0 || ["high","flagged","caution"].includes(t.id)).map(t=>`
+    <div class="tc${selected===t.id?" sel":""}" style="--c:${t.c}" data-tier="${t.id}">
+      <div class="l">${esc(t.label)}</div>
+      <div class="n">${(100*agg[t.id].works/tot).toFixed(1)}%</div>
+      <div class="s">${agg[t.id].works.toLocaleString()} works · ${agg[t.id].journals.toLocaleString()} journals</div>
+      ${opts.researchersBtn && t.id!=="none" && agg[t.id].journals>0 ? `<button class="small" data-res="${t.id}">List researchers</button>`:""}
+    </div>`).join("");
+  const el=document.createElement("div");
+  el.innerHTML=`<div class="tierbar">${bar}</div><div class="tiercards">${cards}</div>`;
+  el.querySelectorAll(".tc").forEach(c=>c.addEventListener("click",ev=>{ if(ev.target.dataset.res) return; onPick(c.dataset.tier===selected?null:c.dataset.tier); }));
+  if(opts.researchersBtn) el.querySelectorAll("button[data-res]").forEach(b=>b.addEventListener("click",()=>opts.researchersBtn(b.dataset.res)));
+  return el;
+}
+
+const journalCols = (countLabel="Works") => [
+  {k:"name", h:"Journal", html:r=>`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a><div class="flagnote">${esc(r.publisher||"")}${r.issn?` · ${esc(r.issn)}`:""}</div>`},
+  {k:"tierRank", h:"Tier", sortv:r=>r.tierRank, html:r=>`${tierTag(r.tier)}<div class="flagnote">${esc(r.reasons.join("; "))}</div>`, csv:r=>TIER[r.tier].label},
+  {k:"count", h:countLabel, num:true},
+  {k:"citedness", h:"2-yr citedness", num:true},
+  {k:"h", h:"Journal h-index", num:true},
+  {k:"idx", h:"Indexed in", html:r=>esc(r.idx.join(", ")||"—"), csv:r=>r.idx.join("; ")},
+  {k:"oa", h:"OA", html:r=>r.oa?"yes":"", csv:r=>r.oa?"yes":"no"},
+  {k:"apc", h:"APC (USD)", num:true},
+];
+const journalCSVCols = () => [
+  {k:"id",h:"openalex_id"},{k:"name",h:"journal"},{k:"publisher",h:"publisher"},{k:"issn",h:"issn_l"},
+  {k:"tier",h:"tier",csv:r=>TIER[r.tier].label},{k:"count",h:"works"},{k:"citedness",h:"2yr_mean_citedness"},{k:"h",h:"h_index"},
+  {k:"idx",h:"indexed_in",csv:r=>r.idx.join("; ")},{k:"oa",h:"fully_oa",csv:r=>r.oa?"yes":"no"},{k:"apc",h:"apc_usd"},{k:"reasons",h:"reasons",csv:r=>r.reasons.join("; ")},
+];
+function journalRow(g){
+  const s=S.sources.get(g.id); const c=classify(s);
+  return {
+    id:g.id, name:s?.display_name||g.name||g.id, publisher:s?.host_organization_name||"", issn:s?.issn_l||"",
+    count:g.count, tier:c.tier, tierRank:TIER[c.tier].rank, reasons:c.reasons, idx:c.idx||[],
+    citedness:s?.summary_stats?.["2yr_mean_citedness"]??null, h:s?.summary_stats?.h_index??null,
+    oa:!!s?.is_oa, apc:s?.apc_usd??null,
+  };
+}
+function authorInfo(id){
+  const a=S.authors.get(id)||{};
+  const inst=(a.last_known_institutions&&a.last_known_institutions[0]) || a.last_known_institution || (a.affiliations&&a.affiliations[0]&&a.affiliations[0].institution) || null;
+  return {
+    orcid: a.orcid ? String(a.orcid).replace(/^https?:\/\/orcid\.org\//,"") : "",
+    inst: inst?.display_name||"", instId: sid(inst?.id||""), country: inst?.country_code||"",
+    allInst: [...(a.last_known_institutions||[]).map(i=>sid(i.id)), ...(a.affiliations||[]).map(x=>sid(x.institution?.id))],
+    works:a.works_count??null, cites:a.cited_by_count??null, h:a.summary_stats?.h_index??null,
+  };
+}
+function authorCols(extra=[]){
+  return [
+    {k:"name",h:"Researcher",html:r=>`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>${r.orcid?`<div class="flagnote"><a href="https://orcid.org/${esc(r.orcid)}" target="_blank" rel="noopener">${esc(r.orcid)}</a></div>`:""}`},
+    {k:"inst",h:"Current institution",html:r=>`${esc(r.inst||"—")}${r.country?` <span class="muted">(${esc(r.country)})</span>`:""}`},
+    ...extra,
+    {k:"works",h:"Total works",num:true},
+    {k:"h",h:"h-index",num:true},
+  ];
+}
+const authorCSVBase = [
+  {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"inst",h:"institution"},{k:"country",h:"country"},
+];
+
+/* ---------------- autocomplete ---------------- */
+function autocomplete(rootSel, entity, onPick){
+  const root=$(rootSel), input=root.querySelector("input");
+  const ul=document.createElement("ul"); ul.className="hidden"; root.appendChild(ul);
+  let t=null, items=[], act=-1, seq=0;
+  const close=()=>{ ul.classList.add("hidden"); act=-1; };
+  const draw=()=>{ ul.innerHTML=items.map((it,i)=>`<li class="${i===act?"act":""}" data-i="${i}">${esc(it.display_name)}<span class="h">${esc([it.hint, it.works_count!=null?`${it.works_count.toLocaleString()} works`:"", it.external_id&&entity!=="institutions"?it.external_id.replace(/^https?:\/\/[^/]+\//,""):""].filter(Boolean).join(" · "))}</span></li>`).join(""); ul.classList.toggle("hidden",!items.length); };
+  const pick=i=>{ const it=items[i]; if(!it) return; onPick({id:sid(it.id), name:it.display_name, hint:it.hint||""}); input.value=""; items=[]; close(); };
+  input.addEventListener("input",()=>{
+    clearTimeout(t); const q=input.value.trim(); if(q.length<2){ items=[]; close(); return; }
+    t=setTimeout(async()=>{
+      const my=++seq;
+      try{ const j=await oa(`/autocomplete/${entity}`,{q}); if(my!==seq) return; items=(j.results||[]).slice(0,10); act=-1; draw(); }
+      catch(e){ setStatus(e.message,"err"); }
+    },280);
+  });
+  input.addEventListener("keydown",e=>{
+    if(ul.classList.contains("hidden")) return;
+    if(e.key==="ArrowDown"){ act=Math.min(items.length-1,act+1); draw(); e.preventDefault(); }
+    else if(e.key==="ArrowUp"){ act=Math.max(0,act-1); draw(); e.preventDefault(); }
+    else if(e.key==="Enter"){ pick(act<0?0:act); e.preventDefault(); }
+    else if(e.key==="Escape") close();
+  });
+  ul.addEventListener("mousedown",e=>{ const li=e.target.closest("li"); if(li){ e.preventDefault(); pick(+li.dataset.i); } });
+  input.addEventListener("blur",()=>setTimeout(close,150));
+}
+function drawPicked(kind, elSel, single){
+  const el=$(elSel);
+  el.innerHTML=S.picked[kind].map((p,i)=>`<span class="chip">${esc(p.name)}${p.hint?` <span class="muted">· ${esc(p.hint)}</span>`:""}<button title="remove" data-i="${i}">✕</button></span>`).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.picked[kind].splice(+b.dataset.i,1); drawPicked(kind,elSel,single); });
+}
+function picker(kind, elSel, single){
+  return p=>{ if(single) S.picked[kind]=[p]; else if(!S.picked[kind].some(x=>x.id===p.id)) S.picked[kind].push(p); drawPicked(kind,elSel,single); };
+}
+
+/* ---------------- SCAN view ---------------- */
+let scanState=null;
+function scanFilter(){
+  const f=baseFilters();
+  const inst=S.picked.inst[0]; if(inst) f.push(`authorships.institutions.id:${inst.id}`);
+  const cc=$("#scanCountry").value.trim().toUpperCase(); if(cc) f.push(`authorships.institutions.country_code:${cc}`);
+  return {filter:f.join(","), search:$("#scanSearch").value.trim(), inst, cc};
+}
+async function doScan(){
+  const sc=scanFilter();
+  if(!sc.inst && !sc.cc && !sc.search) throw new Error("Pick an institution, a country code or a keyword first.");
+  const max=+$("#scanMax").value;
+  setStatus("Grouping works by journal…");
+  const g=await groupBy(sc.filter, "primary_location.source.id", max, sc.search?{search:sc.search}:{});
+  await fetchSources(g.groups.map(x=>x.id));
+  const rows=g.groups.map(journalRow);
+  const sum=g.groups.reduce((s,x)=>s+x.count,0);
+  const none = g.complete && g.totalWorks!=null ? Math.max(0,g.totalWorks-sum) : 0;
+  scanState={sc, g, rows, none, sel:null, researchers:null};
+  renderScan();
+}
+function scopeLabel(sc){ return [sc.inst?.name, sc.cc?`country ${sc.cc}`:"", sc.search?`“${sc.search}”`:""].filter(Boolean).join(" · "); }
+function renderScan(){
+  const out=$("#scanOut"); if(!scanState){ out.innerHTML=""; return; }
+  const st=scanState; st.rows=st.g.groups.map(journalRow);
+  out.innerHTML="";
+  const p=document.createElement("div"); p.className="panel";
+  p.innerHTML=`<div class="card"><span class="big">${esc(scopeLabel(st.sc))}</span>
+    <span class="kv"><span><b>${(st.g.totalWorks??0).toLocaleString()}</b> works matched</span><span><b>${st.rows.length.toLocaleString()}</b> journals analysed${st.g.groupsCount&&st.g.groupsCount>st.rows.length?` (top by output, of ${st.g.groupsCount.toLocaleString()})`:""}</span></span></div>
+    <p class="small muted" style="margin:6px 0 0">Share of works by journal tier. Click a tier to filter the journal table; “List researchers” finds the authors behind that tier.</p>`;
+  p.appendChild(tierSummary(st.rows, st.none, t=>{ st.sel=t; renderScan(); }, st.sel, {researchersBtn:tier=>run(()=>scanResearchers(tier))}));
+  if(!watchSize()) p.insertAdjacentHTML("beforeend",`<div class="warnbox">No watchlist loaded, so nothing can be “On watchlist”. Open <b>Settings</b> to load the Stop Predatory Journals list or your own.</div>`);
+  out.appendChild(p);
+
+  if(st.researchers){
+    const rp=document.createElement("div"); rp.className="panel"; out.appendChild(rp); renderResearchers(rp, st.researchers);
+  }
+
+  const jp=document.createElement("div"); jp.className="panel";
+  const rows = st.sel ? st.rows.filter(r=>r.tier===st.sel) : st.rows;
+  jp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Journals${st.sel?` — ${esc(TIER[st.sel].label)}`:""}</h2><span class="grow"></span><input placeholder="filter by name…" class="jf" style="width:200px"><button class="small dl">Download CSV</button></div><div class="tw"></div>`;
+  out.appendChild(jp);
+  const draw=()=>{ const q=norm(jp.querySelector(".jf").value); table(jp.querySelector(".tw"), q?rows.filter(r=>norm(r.name+" "+r.publisher).includes(q)):rows, journalCols("Works from scope").filter(c=>c.k!=="reasons"), {sort:"count"}); };
+  jp.querySelector(".jf").addEventListener("input",draw); draw();
+  jp.querySelector(".dl").onclick=()=>download(`journals_${slug(scopeLabel(st.sc))}${st.sel?"_"+st.sel:""}.csv`, toCSV(rows, journalCSVCols()));
+}
+async function scanResearchers(tier){
+  const st=scanState; if(!st) return;
+  const jrows=st.rows.filter(r=>r.tier===tier); if(!jrows.length) return;
+  const perChunkMax=1000; const merged=new Map();
+  const parts=chunk(jrows.map(r=>r.id),100);
+  for(let i=0;i<parts.length;i++){
+    setStatus(`Finding researchers in “${TIER[tier].label}” journals (batch ${i+1}/${parts.length})…`);
+    const f=[st.sc.filter, `primary_location.source.id:${parts[i].join("|")}`].filter(Boolean).join(",");
+    const g=await groupBy(f,"authorships.author.id",perChunkMax, st.sc.search?{search:st.sc.search}:{});
+    for(const a of g.groups){ const m=merged.get(a.id)||{id:a.id,name:a.name,count:0}; m.count+=a.count; merged.set(a.id,m); }
+  }
+  let list=[...merged.values()].sort((a,b)=>b.count-a.count).slice(0,2000);
+  await fetchAuthors(list.map(a=>a.id));
+  // per-author: which journals of this tier? (cheap: not fetched per author; we show counts only)
+  list=list.map(a=>({...a, ...authorInfo(a.id)}));
+  st.researchers={tier, list, inst:st.sc.inst, onlyAffiliated: !!st.sc.inst};
+  renderScan();
+  document.querySelector("#scanOut .panel:nth-child(2)")?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function renderResearchers(panel, R){
+  const t=TIER[R.tier];
+  const filt=()=>R.inst && R.onlyAffiliated ? R.list.filter(a=>a.allInst.includes(R.inst.id)) : R.list;
+  const cols=authorCols([{k:"count",h:`Papers in “${t.label}” journals`,num:true}]);
+  panel.innerHTML=`<div class="toolbar"><h2 style="margin:0">Researchers publishing in ${tierTag(R.tier)} journals</h2><span class="grow"></span>
+    ${R.inst?`<label class="small"><input type="checkbox" class="aff" ${R.onlyAffiliated?"checked":""}> only researchers affiliated with ${esc(R.inst.name)}</label>`:""}
+    <input placeholder="filter by name…" class="af" style="width:180px"><button class="small dl">Download CSV</button><button class="small cl">Close</button></div>
+    <p class="small muted" style="margin:0 0 8px">Counts are papers in the scope above that appeared in this tier's journals. Co-authors from elsewhere are included unless you tick the affiliation box (uses OpenAlex's affiliation history).</p><div class="tw"></div>`;
+  const draw=()=>{ const q=norm(panel.querySelector(".af").value); const rows=filt().filter(a=>!q||norm(a.name+" "+a.inst).includes(q)); table(panel.querySelector(".tw"), rows, cols, {sort:"count"}); panel.querySelector("h2").dataset.n=rows.length; };
+  panel.querySelector(".af").addEventListener("input",draw);
+  panel.querySelector(".aff")?.addEventListener("change",e=>{ R.onlyAffiliated=e.target.checked; draw(); });
+  panel.querySelector(".cl").onclick=()=>{ scanState.researchers=null; renderScan(); };
+  panel.querySelector(".dl").onclick=()=>download(`researchers_${slug(t.label)}_${slug(scopeLabel(scanState.sc))}.csv`, toCSV(filt(), [...authorCSVBase, {k:"count",h:"papers_in_tier"},{k:"works",h:"total_works"},{k:"h",h:"h_index"},{k:"tier",h:"tier",csv:()=>t.label}]));
+  draw();
+}
+
+/* ---------------- AUTHOR view ---------------- */
+let authorState=null;
+async function doAuthor(){
+  const a=S.picked.author[0]; if(!a) throw new Error("Pick a researcher from the suggestions first.");
+  setStatus("Loading researcher…");
+  await fetchAuthors([a.id]);
+  setStatus("Grouping their works by journal…");
+  const f=[...baseFilters(), `author.id:${a.id}`].join(",");
+  const g=await groupBy(f,"primary_location.source.id",2000);
+  await fetchSources(g.groups.map(x=>x.id));
+  const sum=g.groups.reduce((s,x)=>s+x.count,0);
+  authorState={a, g, none: g.complete&&g.totalWorks!=null?Math.max(0,g.totalWorks-sum):0, sel:null};
+  renderAuthor();
+}
+function renderAuthor(){
+  const out=$("#authorOut"); if(!authorState){ out.innerHTML=""; return; }
+  const st=authorState, info=authorInfo(st.a.id), rows=st.g.groups.map(journalRow);
+  out.innerHTML="";
+  const p=document.createElement("div"); p.className="panel";
+  p.innerHTML=`<div class="card"><span class="big"><a href="https://openalex.org/${st.a.id}" target="_blank" rel="noopener">${esc(st.a.name)}</a></span>
+    <span class="kv"><span>${esc(info.inst||"")}${info.country?` (${esc(info.country)})`:""}</span>${info.orcid?`<span>ORCID <a href="https://orcid.org/${esc(info.orcid)}" target="_blank" rel="noopener">${esc(info.orcid)}</a></span>`:""}
+    <span><b>${(st.g.totalWorks??0).toLocaleString()}</b> works in range</span><span>h-index <b>${fmt(info.h)}</b></span></span></div>
+    <p class="small muted" style="margin:6px 0 0">OpenAlex author profiles can merge or split people with similar names — check the works list on OpenAlex if something looks off.</p>`;
+  p.appendChild(tierSummary(rows, st.none, t=>{ st.sel=t; renderAuthor(); }, st.sel));
+  if(!watchSize()) p.insertAdjacentHTML("beforeend",`<div class="warnbox">No watchlist loaded — open <b>Settings</b> to add one.</div>`);
+  out.appendChild(p);
+  const jp=document.createElement("div"); jp.className="panel";
+  const shown=st.sel?rows.filter(r=>r.tier===st.sel):rows;
+  jp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Journals${st.sel?` — ${esc(TIER[st.sel].label)}`:""}</h2><span class="grow"></span><button class="small dl">Download CSV</button></div><div class="tw"></div>`;
+  out.appendChild(jp);
+  table(jp.querySelector(".tw"), shown, journalCols("Their papers"), {sort:"count"});
+  jp.querySelector(".dl").onclick=()=>download(`journals_${slug(st.a.name)}.csv`, toCSV(shown, journalCSVCols()));
+}
+
+/* ---------------- JOURNAL view ---------------- */
+let journalState=null;
+async function doJournal(){
+  const js=S.picked.source; if(!js.length) throw new Error("Add at least one journal from the suggestions.");
+  const max=+$("#jMax").value;
+  await fetchSources(js.map(j=>j.id));
+  const merged=new Map(); const meta=[];
+  for(let i=0;i<js.length;i++){
+    const j=js[i];
+    setStatus(`Collecting researchers of ${j.name} (${i+1}/${js.length})…`);
+    const f=[...baseFilters(), `primary_location.source.id:${j.id}`].join(",");
+    const g=await groupBy(f,"authorships.author.id",max);
+    meta.push({...j, totalWorks:g.totalWorks, groupsCount:g.groupsCount, got:g.groups.length});
+    for(const a of g.groups){ const m=merged.get(a.id)||{id:a.id,name:a.name,per:{}}; m.per[j.id]=a.count; merged.set(a.id,m); }
+  }
+  const list=[...merged.values()];
+  await fetchAuthors(list.map(a=>a.id));
+  journalState={meta, list:list.map(a=>({...a, ...authorInfo(a.id), total:Object.values(a.per).reduce((s,n)=>s+n,0), nj:Object.keys(a.per).length}))};
+  renderJournal();
+}
+function renderJournal(){
+  const out=$("#journalOut"); if(!journalState){ out.innerHTML=""; return; }
+  const st=journalState; out.innerHTML="";
+  const p=document.createElement("div"); p.className="panel";
+  p.innerHTML=`<h2>Journals</h2>`;
+  const jrows=st.meta.map(m=>({...journalRow({id:m.id,name:m.name,count:m.totalWorks??0}), authors:m.groupsCount??m.got}));
+  const tw=document.createElement("div"); p.appendChild(tw);
+  table(tw, jrows, [...journalCols("Works in range").filter(c=>c.k!=="reasons"), {k:"authors",h:"Distinct researchers",num:true}], {sort:"tierRank", dir:1});
+  out.appendChild(p);
+
+  const rp=document.createElement("div"); rp.className="panel";
+  const multi=st.meta.length>1;
+  const perCols=st.meta.map(m=>({k:"p_"+m.id, h:m.name.length>28?m.name.slice(0,26)+"…":m.name, num:true, sortv:r=>r.per[m.id]??null, html:r=>fmt(r.per[m.id]??null), csv:r=>r.per[m.id]??0}));
+  rp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Researchers</h2><span class="grow"></span>
+    ${multi?`<label class="small"><input type="checkbox" class="both"> only researchers in 2+ of these journals</label>`:""}
+    <input placeholder="filter by name / institution…" class="af" style="width:220px"><button class="small dl">Download CSV</button></div>
+    <p class="small muted" style="margin:0 0 8px">Up to the selected maximum per journal, most prolific first.</p><div class="tw"></div>`;
+  out.appendChild(rp);
+  const cols=authorCols([...perCols, ...(multi?[{k:"nj",h:"# of these journals",num:true}]:[])]);
+  const rows=()=>{ const q=norm(rp.querySelector(".af").value); const both=rp.querySelector(".both")?.checked; return st.list.filter(a=>(!both||a.nj>1)&&(!q||norm(a.name+" "+a.inst).includes(q))); };
+  const draw=()=>table(rp.querySelector(".tw"), rows(), cols, {sort: multi?"nj":"p_"+st.meta[0].id});
+  rp.querySelector(".af").addEventListener("input",draw); rp.querySelector(".both")?.addEventListener("change",draw);
+  draw();
+  rp.querySelector(".dl").onclick=()=>download(`researchers_${slug(st.meta.map(m=>m.name).join("_"))}.csv`, toCSV(rows(), [...authorCSVBase, ...perCols.map(c=>({...c,h:"papers_in_"+slug(st.meta.find(m=>"p_"+m.id===c.k).name)})), {k:"works",h:"total_works"},{k:"h",h:"h_index"}]));
+}
+
+/* ---------------- STAFF view ---------------- */
+let staffState=null;
+const STAFF_TIERS = ["high","solid","indexed","unvetted","caution","flagged","other"];
+const SHORT = {high:"High", solid:"Estab.", indexed:"Indexed", unvetted:"No index", caution:"Warning", flagged:"Watchlist", other:"Other"};
+function tierSig(){ const t=T(); return [watchSize(), t.high, t.solid, t.low, t.vol].join("|"); }
+
+async function listStaff(inst, who, minWorks, max){
+  const f=[ who==="any" ? `affiliations.institution.id:${inst.id}` : `last_known_institutions.id:${inst.id}` ];
+  if(minWorks>1) f.push(`works_count:>${minWorks-1}`);
+  const out=[]; let cursor="*", total=null;
+  while(out.length<max){
+    const j=await oa("/authors",{filter:f.join(","), per_page:100, cursor, sort:undefined});
+    if(total===null) total=j.meta?.count??null;
+    for(const a of j.results||[]){ S.authors.set(sid(a.id),a); out.push(sid(a.id)); }
+    setStatus(`Listing staff: ${out.length.toLocaleString()}${total!=null?` of ${total.toLocaleString()}`:""}…`);
+    cursor=j.meta?.next_cursor; if(!cursor || !(j.results||[]).length) break;
+  }
+  return {ids:out.slice(0,max), total};
+}
+
+async function doStaff(){
+  const inst=S.picked.staffInst[0]; if(!inst) throw new Error("Pick an organization from the suggestions first.");
+  const who=$("#staffWho").value, minWorks=+$("#staffMin").value, max=+$("#staffMax").value;
+  // 1) staff list
+  const staff=await listStaff(inst, who, minWorks, max);
+  // 2) every journal the organization published in (with this affiliation, in range)
+  const filter=[...baseFilters(), `authorships.institutions.id:${inst.id}`].join(",");
+  setStatus("Grouping the organization's papers by journal…");
+  const g=await groupBy(filter, "primary_location.source.id", 5000);
+  await fetchSources(g.groups.map(x=>x.id));
+  const jrows=g.groups.map(journalRow);
+  // 3) per tier: which authors published in those journals → author × tier matrix
+  const counts=new Map(); // authorId -> {tier:count}
+  const tiers=STAFF_TIERS.filter(t=>jrows.some(r=>r.tier===t));
+  let step=0; const totalSteps=tiers.reduce((s,t)=>s+Math.ceil(jrows.filter(r=>r.tier===t).length/100),0);
+  for(const t of tiers){
+    for(const part of chunk(jrows.filter(r=>r.tier===t).map(r=>r.id),100)){
+      step++; setStatus(`Counting papers per person — ${TIER[t].label} (step ${step}/${totalSteps})…`);
+      const ga=await groupBy(`${filter},primary_location.source.id:${part.join("|")}`, "authorships.author.id", 10000);
+      for(const a of ga.groups){ const m=counts.get(a.id)||{}; m[t]=(m[t]||0)+a.count; counts.set(a.id,m); }
+    }
+  }
+  const sum=g.groups.reduce((s,x)=>s+x.count,0);
+  staffState={inst, who, minWorks, staffTotal:staff.total, staffIds:staff.ids, g, jrows, counts,
+              none: g.complete&&g.totalWorks!=null?Math.max(0,g.totalWorks-sum):0, sig:tierSig(), sel:null, showZero:false, onlyConcern:false};
+  renderStaff();
+}
+
+function staffRows(st){
+  return st.staffIds.map(id=>{
+    const a=S.authors.get(id)||{}; const info=authorInfo(id); const c=st.counts.get(id)||{};
+    const r={id, name:a.display_name||id, ...info};
+    let tot=0; for(const t of STAFF_TIERS){ r[t]=c[t]||0; tot+=r[t]; }
+    r.total=tot; r.concern=r.flagged+r.caution;
+    r.pctTop = tot ? (r.high+r.solid)/tot : null;
+    return r;
+  });
+}
+function miniBar(r){
+  if(!r.total) return `<span class="muted small">no papers in range</span>`;
+  return `<div class="tierbar" style="height:10px;margin:4px 0;min-width:120px">${STAFF_TIERS.filter(t=>r[t]).map(t=>`<div title="${esc(TIER[t].label)}: ${r[t]}" style="width:${100*r[t]/r.total}%;background:${TIER[t].c}"></div>`).join("")}</div>`;
+}
+function renderStaff(){
+  const out=$("#staffOut"); if(!staffState){ out.innerHTML=""; return; }
+  const st=staffState; out.innerHTML="";
+  const rowsAll=staffRows(st);
+  const withPapers=rowsAll.filter(r=>r.total>0);
+  const people=t=>withPapers.filter(r=>r[t]>0).length;
+
+  const p=document.createElement("div"); p.className="panel";
+  p.innerHTML=`<div class="card"><span class="big">${esc(st.inst.name)}</span>
+    <span class="kv"><span><b>${st.staffIds.length.toLocaleString()}</b> ${st.who==="any"?"current + former":"current"} researchers${st.staffTotal>st.staffIds.length?` (of ${st.staffTotal.toLocaleString()} — raise “Max people” for all)`:""}</span>
+    <span><b>${withPapers.length.toLocaleString()}</b> with papers in range</span><span><b>${(st.g.totalWorks??0).toLocaleString()}</b> organization papers · <b>${st.jrows.length.toLocaleString()}</b> journals</span></span></div>
+    <p class="small muted" style="margin:6px 0 0">Bar = all organization papers by journal tier. Click a tier to show only the people with at least one paper in it.</p>`;
+  p.appendChild(tierSummary(st.jrows, st.none, t=>{ st.sel=t; renderStaff(); }, st.sel));
+  p.querySelectorAll(".tc").forEach(c=>{ const t=c.dataset.tier; if(STAFF_TIERS.includes(t)) c.querySelector(".s").insertAdjacentHTML("beforeend",` · <b>${people(t).toLocaleString()}</b> people`); });
+  if(st.sig!==tierSig()) p.insertAdjacentHTML("beforeend",`<div class="warnbox">Watchlist or thresholds changed since this run — per-person counts are out of date. <button class="small rerun">Re-run</button></div>`);
+  else if(!watchSize()) p.insertAdjacentHTML("beforeend",`<div class="warnbox">No watchlist loaded, so nobody can have “Watchlist” papers. Open <b>Settings</b> to load one, then re-run.</div>`);
+  if(!st.g.complete) p.insertAdjacentHTML("beforeend",`<div class="warnbox">Very large organization: only the top ${st.jrows.length.toLocaleString()} journals by output were analysed, so small-journal papers may be missing from the counts. Narrow the year range for full coverage.</div>`);
+  p.querySelector(".rerun")?.addEventListener("click",()=>run(doStaff));
+  out.appendChild(p);
+
+  const tp=document.createElement("div"); tp.className="panel";
+  tp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Staff${st.sel?` with papers in ${tierTag(st.sel)} journals`:""}</h2><span class="grow"></span>
+    <label class="small"><input type="checkbox" class="concern" ${st.onlyConcern?"checked":""}> only people with Watchlist / Warning papers</label>
+    <label class="small"><input type="checkbox" class="zero" ${st.showZero?"checked":""}> include people with no papers in range</label>
+    <input placeholder="filter by name…" class="af" style="width:180px"><button class="small dl">Download CSV</button></div>
+    <p class="small muted" style="margin:0 0 8px">Counts = papers carrying this organization's affiliation, in your year range and work-type filter. <b>Profile</b> opens that person's journal list.</p>
+    <div class="small muted cnt" style="margin-bottom:6px"></div><div class="tw"></div>`;
+  out.appendChild(tp);
+  const cols=[
+    {k:"name",h:"Researcher",html:r=>`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>${r.orcid?`<div class="flagnote"><a href="https://orcid.org/${esc(r.orcid)}" target="_blank" rel="noopener">${esc(r.orcid)}</a></div>`:""}`},
+    {k:"total",h:"Papers",num:true},
+    {k:"pctTop",h:"Mix",sortv:r=>r.pctTop,html:miniBar},
+    ...STAFF_TIERS.map(t=>({k:t,h:SHORT[t],num:true,html:r=>r[t]?(t==="flagged"||t==="caution"?`<b style="color:${TIER[t].c}">${r[t]}</b>`:r[t]):`<span class="muted">·</span>`})),
+    {k:"h",h:"h-index",num:true},
+    {k:"_p",h:"",html:r=>`<button class="small prof" data-id="${r.id}">Profile</button>`},
+  ];
+  const rows=()=>{ const q=norm(tp.querySelector(".af").value);
+    return rowsAll.filter(r=>(st.showZero||r.total>0) && (!st.sel||r[st.sel]>0) && (!st.onlyConcern||r.concern>0) && (!q||norm(r.name).includes(q))); };
+  const draw=()=>{ const rs=rows(); tp.querySelector(".cnt").textContent=`${rs.length.toLocaleString()} people shown`;
+    table(tp.querySelector(".tw"), rs, cols, {sort: st.sel || (st.onlyConcern?"concern":"total")}); };
+  tp.querySelector(".af").addEventListener("input",draw);
+  tp.querySelector(".zero").addEventListener("change",e=>{ st.showZero=e.target.checked; draw(); });
+  tp.querySelector(".concern").addEventListener("change",e=>{ st.onlyConcern=e.target.checked; draw(); });
+  tp.addEventListener("click",e=>{ const b=e.target.closest("button.prof"); if(!b) return;
+    const a=S.authors.get(b.dataset.id); S.picked.author=[{id:b.dataset.id,name:a?.display_name||b.dataset.id,hint:st.inst.name}];
+    drawPicked("author","#pickedAuthor",true); showTab("author"); run(doAuthor); });
+  tp.querySelector(".dl").onclick=()=>download(`staff_${slug(st.inst.name)}${st.sel?"_"+st.sel:""}.csv`, toCSV(rows(), [
+    ...authorCSVBase, {k:"total",h:"papers_in_range"}, ...STAFF_TIERS.map(t=>({k:t,h:"papers_"+slug(TIER[t].label).replace(/-/g,"_")})),
+    {k:"pctTop",h:"share_high_or_established",csv:r=>r.pctTop==null?"":(100*r.pctTop).toFixed(1)+"%"},{k:"works",h:"total_works_all_time"},{k:"h",h:"h_index"}]));
+  draw();
+}
+
+/* ================= PUBLICATION INCENTIVE SCREENING ================= */
+const PRESETS = {
+  dmu: () => ({
+    name: "Debre Markos University — publication reward, 2026/27 call",
+    source: "Research, Publication, Ethics & Dissemination Directorate letter Ref. 048/1.1/19, dated 26/02/2019 E.C.; reward guideline approved by the Board on Hamle 16, 2014 E.C. (Article 8 form and payment tables).",
+    notes: "Window = Hamle 1, 2018 E.C. → Meskerem 30, 2019 E.C. The letter writes the end as “September 10/2026 G.C.”, but Meskerem 30, 2019 E.C. converts to 10 October 2026 — check which date the Directorate intends. Claims due Hidar 10, 2019 E.C. (19 Nov 2026). Papers must carry the university's institutional email — verify on the PDF.",
+    institution: {id:"", name:"Debre Markos University"},
+    affText: "Debre Markos",
+    window: {from:"2026-07-08", to:"2026-10-10"},
+    currency: "ETB",
+    payOnlyAffiliated: true,
+    requireInstEmail: true,
+    indexes: {scopus:true, wos:true, pubmed:true},
+    checks: {watchlist:"reject", caution:"review", retracted:"reject"},
+    categories: [
+      {id:"full",       label:"Full length articles",                         match:"indexed-article", rate:4000,  max:5},
+      {id:"review",     label:"Reviewed articles",                            match:"indexed-review",  rate:3000,  max:5},
+      {id:"dmujids",    label:"DMUJIDS published papers",                     match:"list", journals:[], rate:3500, max:5},
+      {id:"national",   label:"National accredited journals",                 match:"national",        rate:3000,  max:5},
+      {id:"choke",      label:"Choke Journal of Science and Technology (till accredited by MoE)", match:"list", journals:["Choke Journal of Science and Technology"], rate:2000, max:5},
+      {id:"book",       label:"Books",                                        match:"type:book",       rate:10000, max:2},
+      {id:"chapter",    label:"Book chapters",                                match:"type:book-chapter", rate:4000, max:5},
+      {id:"translated", label:"Translated books",                             match:"manual",          rate:7500,  max:2},
+      {id:"poems",      label:"Collection of poems",                          match:"manual",          rate:5000,  max:2},
+    ],
+    shares: {"1":"70", "2":"60,40", "3":"50,30,20", "4":"40,30,20,10", "5+":"35,25,20", rest:20},
+    lists: {national:[], wos:[], scopus:[], paidDois:[]},
+  }),
+  blank: () => ({
+    name: "Custom rule set", source:"", notes:"",
+    institution:{id:"", name:""}, affText:"", window:{from:"", to:""}, currency:"USD",
+    payOnlyAffiliated:true, requireInstEmail:false,
+    indexes:{scopus:true, wos:true, pubmed:true},
+    checks:{watchlist:"reject", caution:"review", retracted:"reject"},
+    categories:[
+      {id:"full", label:"Original research article (indexed)", match:"indexed-article", rate:0, max:5},
+      {id:"review", label:"Review article (indexed)", match:"indexed-review", rate:0, max:5},
+      {id:"national", label:"Nationally accredited journal", match:"national", rate:0, max:5},
+      {id:"book", label:"Book", match:"type:book", rate:0, max:2},
+      {id:"chapter", label:"Book chapter", match:"type:book-chapter", rate:0, max:5},
+    ],
+    shares: {"1":"100", "2":"60,40", "3":"50,30,20", "4":"40,30,20,10", "5+":"35,25,20", rest:20},
+    lists: {national:[], wos:[], scopus:[], paidDois:[]},
+  }),
+};
+const MATCH_TXT = {
+  "indexed-article":"Article in a Scopus / WoS / PubMed-indexed journal", "indexed-review":"Review in an indexed journal",
+  "national":"Journal on the national accredited list", "list":"Journal named in this row's list",
+  "type:book":"OpenAlex type = book", "type:book-chapter":"OpenAlex type = book chapter", "manual":"Claimed manually (not detectable)",
+};
+let R = null;          // active rule set
+let incState = null;   // last screening result
+S.decisions = new Map(); // workId -> "approved" | "rejected"
+
+function saveRules(){ store.set("rules", JSON.stringify(R)); $("#rsSaved").textContent="Rules saved in this browser."; }
+function loadRules(){
+  try{ const o=JSON.parse(store.get("rules")||"null"); if(o && o.categories) return o; }catch(e){}
+  return PRESETS.dmu();
+}
+function loadDecisions(){ try{ S.decisions=new Map(JSON.parse(store.get("decisions")||"[]")); }catch(e){} }
+function saveDecisions(){ store.set("decisions", JSON.stringify([...S.decisions])); }
+
+function getPath(o,p){ return p.split(".").reduce((a,k)=>a?.[k], o); }
+function setPath(o,p,v){ const ks=p.split("."); const last=ks.pop(); const t=ks.reduce((a,k)=>a[k],o); t[last]=v; }
+const linesOf = s => String(s||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+
+function renderRulesEditor(){
+  const el=$("#rsEditor");
+  const inp=(path,type="text",cls="")=>{ const v=getPath(R,path); return `<input data-p="${path}" data-t="${type}" type="${type==="num"?"number":type}" class="${cls}" value="${esc(v??"")}">`; };
+  const ta=(path,ph)=>`<textarea data-p="${path}" data-t="lines" placeholder="${esc(ph)}">${esc((getPath(R,path)||[]).join("\n"))}</textarea>`;
+  el.innerHTML=`
+    <div class="small" style="margin:12px 0 4px"><b>${esc(R.name)}</b>${R.source?` <span class="muted">— ${esc(R.source)}</span>`:""}</div>
+    ${R.notes?`<div class="warnbox" style="margin-top:4px">${esc(R.notes)}</div>`:""}
+    <div class="rs-grid">
+      <div>
+        <h3>Window & basics</h3>
+        <div class="row">
+          <label class="f">Published from${inp("window.from","date")}</label>
+          <label class="f">to${inp("window.to","date")}</label>
+          <label class="f">Currency${inp("currency","text")}</label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="f" style="flex:1">Also match affiliation text (catches papers OpenAlex didn't link)${inp("affText","text","wide")}</label>
+        </div>
+        <div style="margin-top:8px" class="small">
+          <label><input type="checkbox" data-p="payOnlyAffiliated" data-t="bool" ${R.payOnlyAffiliated?"checked":""}> Pay only authors affiliated with the institution (others' shares are not paid out)</label><br>
+          <label><input type="checkbox" data-p="requireInstEmail" data-t="bool" ${R.requireInstEmail?"checked":""}> Institutional email required on the paper (manual check on the form)</label>
+        </div>
+        <h3>Accepted indexes</h3>
+        <div class="small">
+          <label><input type="checkbox" data-p="indexes.scopus" data-t="bool" ${R.indexes.scopus?"checked":""}> Scopus</label>&nbsp;
+          <label><input type="checkbox" data-p="indexes.wos" data-t="bool" ${R.indexes.wos?"checked":""}> Web of Science</label>&nbsp;
+          <label><input type="checkbox" data-p="indexes.pubmed" data-t="bool" ${R.indexes.pubmed?"checked":""}> PubMed</label>
+        </div>
+        <h3>Integrity checks</h3>
+        <div class="row">
+          <label class="f">Journal on watchlist<select data-p="checks.watchlist" data-t="text"><option value="reject">Not eligible</option><option value="review">Needs review</option></select></label>
+          <label class="f">Journal with warning signals<select data-p="checks.caution" data-t="text"><option value="review">Needs review</option><option value="reject">Not eligible</option><option value="ignore">Ignore</option></select></label>
+          <label class="f">Retracted paper<select data-p="checks.retracted" data-t="text"><option value="reject">Not eligible</option><option value="review">Needs review</option></select></label>
+        </div>
+      </div>
+      <div>
+        <h3>Lists</h3>
+        <label class="f">Nationally accredited journals (titles or ISSNs)${ta("lists.national","e.g. Ethiopian Journal of Health Sciences\n1234-5678")}</label>
+        <label class="f" style="margin-top:8px">Web of Science journal list — optional (titles/ISSNs). Without it, papers not found in Scopus/PubMed go to “Needs review”.${ta("lists.wos","paste ISSNs from the WoS Master Journal List")}</label>
+        <label class="f" style="margin-top:8px">Extra Scopus titles/ISSNs (adds to OpenAlex's Scopus flag)${ta("lists.scopus","optional")}</label>
+        <label class="f" style="margin-top:8px">Already-rewarded DOIs (blocks duplicate claims)${ta("lists.paidDois","10.1234/abcd.2026.001")}</label>
+      </div>
+      <div class="full"><div>
+        <h3>Reward categories (rate per paper · max papers per author)</h3>
+        <table><thead><tr><th style="width:42%">Category</th><th>Detected as</th><th class="num">Rate</th><th class="num">Max papers</th></tr></thead><tbody>
+        ${R.categories.map((c,i)=>`<tr><td>${inp(`categories.${i}.label`,"text","wide")}${c.match==="list"?`<textarea data-p="categories.${i}.journals" data-t="lines" placeholder="Exact journal title(s) or ISSN(s), one per line" style="min-height:44px;margin-top:4px">${esc((c.journals||[]).join("\n"))}</textarea>`:""}</td>
+          <td class="small muted">${esc(MATCH_TXT[c.match]||c.match)}</td><td class="num">${inp(`categories.${i}.rate`,"num")}</td><td class="num">${inp(`categories.${i}.max`,"num")}</td></tr>`).join("")}
+        </tbody></table>
+        </div><div>
+        <h3>Author share (% of the rate, by byline order)</h3>
+        <table><tbody>
+          <tr><td>Sole author</td><td>${inp("shares.1","text","wide")}</td></tr>
+          <tr><td>2 authors</td><td>${inp("shares.2","text","wide")}</td></tr>
+          <tr><td>3 authors</td><td>${inp("shares.3","text","wide")}</td></tr>
+          <tr><td>4 authors</td><td>${inp("shares.4","text","wide")}</td></tr>
+          <tr><td>5+ authors: first, second, third…</td><td>${inp("shares.5+","text","wide")}</td></tr>
+          <tr><td>5+ authors: % split equally among the rest</td><td>${inp("shares.rest","num")}</td></tr>
+        </tbody></table>
+        <p class="small muted" style="margin:4px 0 0">“First and/or senior author” is taken as byline position; adjust the order on the printed form if the institution decides otherwise.</p>
+      </div></div>
+    </div>`;
+  el.querySelectorAll("select[data-p]").forEach(s=>s.value=getPath(R,s.dataset.p));
+  el.querySelectorAll("[data-p]").forEach(x=>x.addEventListener("change",()=>{
+    const t=x.dataset.t; let v;
+    if(t==="bool") v=x.checked; else if(t==="num") v=+x.value; else if(t==="lines") v=linesOf(x.value); else v=x.value.trim();
+    setPath(R,x.dataset.p,v); saveRules(); if(incState) renderIncent(); if(mgmtState) renderMgmt();
+  }));
+  S.picked.incInst = R.institution?.id ? [{id:R.institution.id, name:R.institution.name, hint:""}] : [];
+  drawPicked("incInst","#pickedIncInst",true);
+  S.picked.mgmtInst = S.picked.incInst.slice(); drawPicked("mgmtInst","#pickedMgmtInst",true);
+}
+
+/* --- matching helpers --- */
+function listHit(src, list){
+  if(!src || !list || !list.length) return null;
+  const issns=new Set([src.issn_l, ...(src.issn||[])].filter(Boolean).map(normIssn));
+  const titles=new Set([src.display_name, ...(src.alternate_titles||[])].map(norm));
+  for(const e of list){
+    if(ISSN_RE.test(e) && issns.has(normIssn(e))) return e;
+    if(titles.has(norm(e))) return e;
+  }
+  return null;
+}
+function isAffiliated(au){
+  if(R.institution?.id && (au.institutions||[]).some(i=>sid(i.id)===R.institution.id)) return true;
+  const t=norm(R.affText); if(!t) return false;
+  return (au.raw_affiliation_strings||[]).some(s=>norm(s).includes(t)) || (au.institutions||[]).some(i=>norm(i.display_name).includes(t));
+}
+function sharePcts(n){
+  const parse=s=>String(s||"").split(/[,\s]+/).map(Number).filter(x=>!Number.isNaN(x));
+  if(n>=1 && n<=4 && R.shares[String(n)]) return parse(R.shares[String(n)]);
+  const lead=parse(R.shares["5+"]).slice(0,n); const others=n-lead.length;
+  return [...lead, ...Array(Math.max(0,others)).fill(others>0?(+R.shares.rest||0)/others:0)];
+}
+const money = v => `${(Math.round(v*100)/100).toLocaleString(undefined,{maximumFractionDigits:2})} ${R.currency||""}`.trim();
+
+/* --- screening one work --- */
+function screenWork(w){
+  const srcId = w.primary_location?.source?.id ? sid(w.primary_location.source.id) : null;
+  const src = srcId ? (S.sources.get(srcId) || w.primary_location.source) : null;
+  const type = w.type || "";
+  const fails=[], review=[], ok=[];
+  const auths = (w.authorships||[]).map((a,i)=>({...a, i, aff:isAffiliated(a)}));
+  const nAff = auths.filter(a=>a.aff).length;
+  if(!nAff) fails.push("No author carries the institution's affiliation on this paper");
+  else ok.push(`${nAff} of ${auths.length} authors affiliated`);
+
+  const scopusFlag = src ? (src.is_indexed_in_scopus===true ? true : src.is_indexed_in_scopus===false ? false : null) : null;
+  const ix = {
+    scopus: scopusFlag===true || !!listHit(src, R.lists.scopus) ? "y" : scopusFlag===false ? "n" : "?",
+    pubmed: ((w.indexed_in||[]).includes("pubmed") || !!w.ids?.pmid) ? "y" : "n",
+    wos: listHit(src, R.lists.wos) ? "y" : (R.lists.wos||[]).length ? "n" : "?",
+    doaj: src?.is_in_doaj ? "y" : "n",
+  };
+  const indexed = (R.indexes.scopus && ix.scopus==="y") || (R.indexes.pubmed && ix.pubmed==="y") || (R.indexes.wos && ix.wos==="y");
+  const national = !!listHit(src, R.lists.national);
+  const isPaper = type==="article" || type==="review";
+  const cands=[];
+  for(const c of R.categories){
+    if(c.match==="indexed-article" && indexed && type==="article") cands.push(c);
+    else if(c.match==="indexed-review" && indexed && type==="review") cands.push(c);
+    else if(c.match==="national" && national && isPaper) cands.push(c);
+    else if(c.match==="list" && listHit(src, c.journals)) cands.push(c);
+    else if(c.match.startsWith("type:") && type===c.match.slice(5)) cands.push(c);
+  }
+  let cat = cands.sort((a,b)=>(b.rate||0)-(a.rate||0))[0] || null;
+  if(!cat){
+    const wosPossible = R.indexes.wos && ix.wos==="?" && isPaper && src && (!src.type || src.type==="journal");
+    if(wosPossible){
+      cat = R.categories.find(c=>c.match===(type==="review"?"indexed-review":"indexed-article")) || null;
+      review.push("Not found in Scopus or PubMed — confirm Web of Science indexing (or load a WoS list)");
+    } else if(!isPaper && !["book","book-chapter"].includes(type)){
+      fails.push(`Document type “${type||"unknown"}” is not a rewardable category`);
+    } else {
+      fails.push("Journal not in an accepted index or the accredited list");
+    }
+  }
+  if(src && src.type && src.type!=="journal" && !["book","book-chapter"].includes(type) && !cands.length) fails.push(`Venue is a ${src.type}, not a journal`);
+
+  const cl = src && S.sources.has(srcId) ? classify(S.sources.get(srcId)) : {tier:src?"unvetted":"none", reasons:[]};
+  if(cl.tier==="flagged") (R.checks.watchlist==="reject"?fails:review).push(cl.reasons[0]||"Journal on watchlist");
+  if(cl.tier==="caution" && R.checks.caution!=="ignore") (R.checks.caution==="reject"?fails:review).push("Journal warning signals: "+cl.reasons.join("; "));
+  if(w.is_retracted) (R.checks.retracted==="reject"?fails:review).push("Paper is retracted");
+  const doi = String(w.doi||"").replace(/^https?:\/\/doi\.org\//i,"").toLowerCase();
+  if(doi && (R.lists.paidDois||[]).some(d=>d.toLowerCase().replace(/^https?:\/\/doi\.org\//,"")===doi)) fails.push("Already rewarded (DOI is on the paid list)");
+  if(!doi) review.push("No DOI recorded — confirm the publication on the publisher's site");
+
+  let status = fails.length ? "rejected" : review.length ? "review" : "eligible";
+  const decision = S.decisions.get(sid(w.id));
+  const pcts = sharePcts(auths.length);
+  return { id:sid(w.id), w, src, srcId, type, doi, cat, tier:cl.tier, tierReasons:cl.reasons, ix, indexed, national,
+           fails, review, ok, status, decision, auths, nAff, pcts,
+           final: decision==="approved" ? "approved" : decision==="rejected" ? "rejected" : status };
+}
+
+/* --- payments with per-author caps --- */
+function computePayments(claims){
+  const per = new Map(); // authorKey -> {name, orcid, items:[]}
+  for(const c of claims){
+    c.pay = c.auths.map(()=>0);
+    if(!(c.final==="eligible"||c.final==="approved") || !c.cat) continue;
+    c.auths.forEach((a,i)=>{
+      const amt=(c.cat.rate||0)*(c.pcts[i]||0)/100;
+      if(R.payOnlyAffiliated && !a.aff) return;
+      const key = a.author?.id ? sid(a.author.id) : "name:"+norm(a.author?.display_name);
+      const p = per.get(key) || {key, id:a.author?.id?sid(a.author.id):"", name:a.author?.display_name||"?", orcid:String(a.author?.orcid||"").replace(/^https?:\/\/orcid\.org\//,""), items:[]};
+      p.items.push({claim:c, i, cat:c.cat, amt}); per.set(key,p);
+    });
+  }
+  for(const p of per.values()){
+    p.paid=0; p.over=0; p.nPaid=0;
+    const byCat = new Map(); for(const it of p.items){ (byCat.get(it.cat.id)||byCat.set(it.cat.id,[]).get(it.cat.id)).push(it); }
+    for(const [cid,items] of byCat){
+      const max = items[0].cat.max || Infinity;
+      items.sort((a,b)=>b.amt-a.amt).forEach((it,k)=>{
+        if(k<max){ it.paid=true; p.paid+=it.amt; p.nPaid++; it.claim.pay[it.i]=it.amt; }
+        else { it.paid=false; p.over++; }
+      });
+    }
+  }
+  return [...per.values()];
+}
+
+/* --- fetching --- */
+async function fetchWorks(filter, cap=6000){
+  const out=[]; let cursor="*", select="id,doi,display_name,title,publication_date,publication_year,type,primary_location,authorships,biblio,cited_by_count,is_retracted,indexed_in,ids,fwci,citation_normalized_percentile,open_access,primary_topic,countries_distinct_count,institutions_distinct_count,corresponding_institution_ids";
+  while(out.length<cap){
+    let j;
+    try{ j=await oa("/works",{filter, per_page:200, cursor, select}); }
+    catch(e){ if(select && e.status===400 && !out.length){ select=undefined; continue; } throw e; }
+    out.push(...(j.results||[]));
+    setStatus(`Fetching papers: ${out.length.toLocaleString()}${j.meta?.count!=null?` of ${j.meta.count.toLocaleString()}`:""}…`);
+    cursor=j.meta?.next_cursor; if(!cursor || !(j.results||[]).length) break;
+  }
+  return out;
+}
+async function resolveInstitution(){
+  if(R.institution?.id) return;
+  if(!R.institution?.name) return;
+  const j=await oa("/autocomplete/institutions",{q:R.institution.name});
+  const hit=(j.results||[]).find(r=>norm(r.display_name)===norm(R.institution.name)) || (j.results||[])[0];
+  if(hit){ R.institution={id:sid(hit.id), name:hit.display_name}; saveRules(); renderRulesEditor(); }
+}
+async function doIncent(){
+  R.institution = S.picked.incInst?.[0] ? {id:S.picked.incInst[0].id, name:S.picked.incInst[0].name} : {id:"", name:R.institution?.name||""};
+  setStatus("Resolving institution…");
+  await resolveInstitution();
+  if(!R.institution?.id && !R.affText) throw new Error("Pick the institution (or set an affiliation text) first.");
+  if(!R.window.from || !R.window.to) throw new Error("Set the publication window dates.");
+  const dates=`from_publication_date:${R.window.from},to_publication_date:${R.window.to}`;
+  const byId=new Map();
+  if(R.institution?.id) for(const w of await fetchWorks(`authorships.institutions.id:${R.institution.id},${dates}`)) byId.set(sid(w.id),w);
+  if(R.affText){
+    setStatus("Searching affiliation text for papers OpenAlex didn't link…");
+    for(const w of await fetchWorks(`raw_affiliation_strings.search:${R.affText.replace(/[,|:]/g," ")},${dates}`)) if(!byId.has(sid(w.id))) byId.set(sid(w.id),{...w,_viaText:true});
+  }
+  const works=[...byId.values()];
+  await fetchSources([...new Set(works.map(w=>w.primary_location?.source?.id).filter(Boolean).map(sid))]);
+  // author metrics for the form (only papers that might be paid)
+  const pre=works.map(screenWork).filter(c=>c.status!=="rejected");
+  const aIds=[...new Set(pre.flatMap(c=>c.auths.map(a=>a.author?.id).filter(Boolean).map(sid)))];
+  await fetchAuthors(aIds);
+  incState={works, filter:"all", q:"", at:new Date()};
+  renderIncent();
+}
+
+/* --- rendering --- */
+const ckCell = v => `<span class="${v==="y"?"y":v==="n"?"n":"q"}">${v==="y"?"✓":v==="n"?"✗":"?"}</span>`;
+const stTag = s => `<span class="st ${s}">${{eligible:"Eligible",review:"Needs review",rejected:"Not eligible",approved:"Approved"}[s]}</span>`;
+function renderIncent(){
+  const out=$("#incOut"); if(!incState){ out.innerHTML=""; return; }
+  const claims=incState.works.map(screenWork);
+  const people=computePayments(claims);
+  incState.claims=claims; incState.people=people;
+  const n=s=>claims.filter(c=>c.final===s).length;
+  const total=people.reduce((s,p)=>s+p.paid,0);
+  const pending=claims.filter(c=>c.final==="review");
+  const potential=pending.reduce((s,c)=>s+(c.cat?(c.cat.rate||0)*c.auths.reduce((t,a,i)=>t+((!R.payOnlyAffiliated||a.aff)?(c.pcts[i]||0):0),0)/100:0),0);
+  out.innerHTML="";
+
+  const p=document.createElement("div"); p.className="panel";
+  const byCat=new Map(); for(const c of claims) if((c.final==="eligible"||c.final==="approved")&&c.cat){ const o=byCat.get(c.cat.id)||{label:c.cat.label,n:0,amt:0}; o.n++; o.amt+=c.pay.reduce((s,x)=>s+x,0); byCat.set(c.cat.id,o); }
+  p.innerHTML=`<div class="card"><span class="big">${esc(R.institution?.name||R.affText)}</span><span class="kv"><span>Published <b>${esc(R.window.from)}</b> → <b>${esc(R.window.to)}</b></span><span>Rule set: ${esc(R.name)}</span><span>Data: OpenAlex, ${incState.at.toLocaleString()}</span></span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="n">${claims.length}</div><div class="l">papers found</div></div>
+      <div class="kpi"><div class="n" style="color:var(--high)">${n("eligible")+n("approved")}</div><div class="l">eligible / approved</div></div>
+      <div class="kpi"><div class="n" style="color:var(--caution)">${n("review")}</div><div class="l">need review</div></div>
+      <div class="kpi"><div class="n" style="color:var(--flagged)">${n("rejected")}</div><div class="l">not eligible</div></div>
+      <div class="kpi"><div class="n">${esc(money(total))}</div><div class="l">payable to ${people.filter(x=>x.paid>0).length} staff</div></div>
+      <div class="kpi"><div class="n">${esc(money(potential))}</div><div class="l">more if all reviews are approved (before caps)</div></div>
+    </div>
+    ${byCat.size?`<div class="small muted">By category: ${[...byCat.values()].map(o=>`${esc(o.label)} — ${o.n} papers, ${esc(money(o.amt))}`).join(" · ")}</div>`:""}
+    ${!watchSize()?`<div class="warnbox">No predatory-journal watchlist loaded, so the watchlist check can't fire. Load one in <b>Settings</b>.</div>`:""}
+    ${R.indexes.wos && !(R.lists.wos||[]).length && pending.some(c=>c.review.some(r=>/Web of Science/.test(r)))?`<div class="warnbox">${(n=>`${n} paper${n===1?"":"s"} need${n===1?"s":""}`)(pending.filter(c=>c.review.some(r=>/Web of Science/.test(r))).length)} a Web of Science check because WoS data isn't open. Paste ISSNs from the WoS Master Journal List into the rules to automate it.</div>`:""}
+    ${R.categories.some(c=>c.match==="national") && !(R.lists.national||[]).length?`<div class="warnbox">The national accredited-journal list is empty, so papers in accredited (non-indexed) journals can't be recognised. Paste the Ministry's list into the rules.</div>`:""}
+    <div class="toolbar"><button class="small" id="incPrintAll">Print forms for all eligible/approved papers</button><button class="small" id="incCsvPapers">Download papers CSV</button><button class="small" id="incCsvPay">Download payments CSV</button></div>`;
+  out.appendChild(p);
+
+  // papers
+  const tp=document.createElement("div"); tp.className="panel";
+  tp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Papers</h2><span class="grow"></span>
+    <div class="chips">${[["all","All"],["eligible","Eligible"],["approved","Approved"],["review","Needs review"],["rejected","Not eligible"]].map(([k,l])=>`<button class="small" data-f="${k}" aria-pressed="${incState.filter===k}">${l}</button>`).join("")}</div>
+    <input class="pf" placeholder="filter by title, journal, author…" style="width:220px" value="${esc(incState.q)}"></div>
+    <p class="small muted" style="margin:0 0 8px">Index columns: <span class="ck"><span class="y">✓</span></span> found · <span class="ck"><span class="n">✗</span></span> not found · <span class="ck"><span class="q">?</span></span> can't be checked automatically. “Needs review” items can be approved or rejected here; decisions are kept in this browser and recorded on the form.</p><div class="tw"></div>`;
+  out.appendChild(tp);
+  const cols=[
+    {k:"final",h:"Status",sortv:r=>({rejected:0,review:1,approved:2,eligible:3})[r.final],html:r=>`${stTag(r.final)}${r.decision?`<div class="flagnote">manual decision (was ${esc(r.status)})</div>`:""}<div class="flagnote">${esc((r.fails.length?r.fails:r.review).join(" · "))}</div>${r.final==="review"||r.decision?`<div style="margin-top:4px"><button class="small" data-dec="approved" data-id="${r.id}">Approve</button> <button class="small" data-dec="rejected" data-id="${r.id}">Reject</button>${r.decision?` <button class="small" data-dec="" data-id="${r.id}">Undo</button>`:""}</div>`:""}`},
+    {k:"title",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name||r.w.title)}</a>`:esc(r.w.display_name||r.w.title)}<div class="flagnote">${esc(r.w.publication_date||"")} · ${esc(r.type)} · ${r.auths.length} authors (${r.nAff} affiliated)${r.w._viaText?" · found via affiliation text":""}</div>`},
+    {k:"journal",h:"Journal",sortv:r=>r.src?.display_name||"",html:r=>`${esc(r.src?.display_name||"—")}<div class="flagnote">${esc(r.src?.host_organization_name||"")}</div>${r.src?tierTag(r.tier):""}`},
+    {k:"ix",h:"Scopus · WoS · PubMed",sortv:r=>r.indexed?1:0,html:r=>`<span class="ck">${ckCell(r.ix.scopus)} ${ckCell(r.ix.wos)} ${ckCell(r.ix.pubmed)}</span>${r.national?`<div class="flagnote">on national list</div>`:""}`},
+    {k:"cat",h:"Category",sortv:r=>r.cat?.label||"",html:r=>r.cat?`${esc(r.cat.label)}<div class="flagnote">${esc(money(r.cat.rate||0))}/paper</div>`:"—"},
+    {k:"payout",h:"Payout",num:true,sortv:r=>r.pay.reduce((s,x)=>s+x,0),html:r=>{ const t=r.pay.reduce((s,x)=>s+x,0); return t?esc(money(t)):"—"; }},
+    {k:"_f",h:"",html:r=>`<button class="small" data-form="${r.id}">Form</button>`},
+  ];
+  const rows=()=>{ const q=norm(incState.q); return claims.filter(c=>(incState.filter==="all"||c.final===incState.filter)&&(!q||norm([c.w.display_name,c.src?.display_name,...c.auths.map(a=>a.author?.display_name)].join(" ")).includes(q))); };
+  const draw=()=>table(tp.querySelector(".tw"), rows(), cols, {sort:"final", dir:1});
+  tp.querySelector(".pf").addEventListener("input",e=>{ incState.q=e.target.value; draw(); });
+  tp.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ incState.filter=b.dataset.f; renderIncent(); });
+  tp.addEventListener("click",e=>{
+    const d=e.target.closest("[data-dec]"); if(d){ if(d.dataset.dec) S.decisions.set(d.dataset.id,d.dataset.dec); else S.decisions.delete(d.dataset.id); saveDecisions(); renderIncent(); return; }
+    const f=e.target.closest("[data-form]"); if(f) openForms([claims.find(c=>c.id===f.dataset.form)]);
+  });
+  draw();
+
+  // payments
+  const pp=document.createElement("div"); pp.className="panel";
+  pp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Payments by staff member</h2><span class="grow"></span></div>
+    <p class="small muted" style="margin:0 0 8px">Per-author caps apply per category (most valuable papers first). Shares for authors outside the institution ${R.payOnlyAffiliated?"are not paid":"are included"}.</p><div class="tw"></div>`;
+  out.appendChild(pp);
+  table(pp.querySelector(".tw"), people, [
+    {k:"name",h:"Staff member",html:r=>`${r.id?`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>`:esc(r.name)}${r.orcid?`<div class="flagnote">${esc(r.orcid)}</div>`:""}`},
+    {k:"nPaid",h:"Papers paid",num:true},
+    {k:"over",h:"Over cap",num:true},
+    {k:"detail",h:"Breakdown",sortv:r=>r.items.length,html:r=>`<span class="small">${r.items.map(it=>`${esc(it.cat.label)}: ${esc(money(it.amt))}${it.paid?"":" (over cap)"}`).join("<br>")}</span>`},
+    {k:"paid",h:"Amount",num:true,html:r=>esc(money(r.paid))},
+  ], {sort:"paid"});
+
+  $("#incPrintAll").onclick=()=>{ const ok=claims.filter(c=>c.final==="eligible"||c.final==="approved"); if(ok.length) openForms(ok); };
+  $("#incCsvPapers").onclick=()=>download(`incentive_papers_${slug(R.institution?.name||R.affText)}.csv`, toCSV(claims, [
+    {k:"id",h:"openalex_id"},{k:"doi",h:"doi"},{k:"t",h:"title",csv:r=>r.w.display_name},{k:"d",h:"publication_date",csv:r=>r.w.publication_date},{k:"type",h:"type"},
+    {k:"j",h:"journal",csv:r=>r.src?.display_name||""},{k:"pub",h:"publisher",csv:r=>r.src?.host_organization_name||""},{k:"issn",h:"issn_l",csv:r=>r.src?.issn_l||""},
+    {k:"tier",h:"journal_tier",csv:r=>TIER[r.tier]?.label||""},{k:"sc",h:"scopus",csv:r=>r.ix.scopus},{k:"wos",h:"wos",csv:r=>r.ix.wos},{k:"pm",h:"pubmed",csv:r=>r.ix.pubmed},
+    {k:"cat",h:"category",csv:r=>r.cat?.label||""},{k:"rate",h:"rate",csv:r=>r.cat?.rate??""},{k:"status",h:"automatic_status"},{k:"decision",h:"manual_decision",csv:r=>r.decision||""},{k:"final",h:"final_status"},
+    {k:"why",h:"reasons",csv:r=>[...r.fails,...r.review].join("; ")},{k:"na",h:"authors",csv:r=>r.auths.length},{k:"nAff",h:"affiliated_authors"},
+    {k:"payout",h:"payout",csv:r=>r.pay.reduce((s,x)=>s+x,0)},
+  ]));
+  $("#incCsvPay").onclick=()=>download(`incentive_payments_${slug(R.institution?.name||R.affText)}.csv`, toCSV(people.flatMap(p=>p.items.map(it=>({p,it}))), [
+    {k:"n",h:"staff_member",csv:r=>r.p.name},{k:"o",h:"orcid",csv:r=>r.p.orcid},{k:"oa",h:"openalex_id",csv:r=>r.p.id},
+    {k:"doi",h:"doi",csv:r=>r.it.claim.doi},{k:"t",h:"title",csv:r=>r.it.claim.w.display_name},{k:"c",h:"category",csv:r=>r.it.cat.label},
+    {k:"pos",h:"author_position",csv:r=>r.it.i+1},{k:"pct",h:"share_pct",csv:r=>r.it.claim.pcts[r.it.i]},{k:"a",h:"amount",csv:r=>Math.round(r.it.amt*100)/100},{k:"paid",h:"within_cap",csv:r=>r.it.paid?"yes":"no"},
+    {k:"cur",h:"currency",csv:()=>R.currency},
+  ]));
+}
+
+/* --- verification form --- */
+function formHTML(c){
+  const w=c.w, b=w.biblio||{}, s=c.src||{}, src=S.sources.get(c.srcId)||s;
+  const box=v=>`<span class="box">${v?"✓":""}</span>`;
+  const pages=[b.first_page,b.last_page].filter(Boolean).join("–");
+  const chk=(label,res,evidence)=>`<tr><td>${esc(label)}</td><td><b>${esc(res)}</b></td><td>${evidence}</td></tr>`;
+  const ixTxt=v=>v==="y"?"Yes":v==="n"?"Not found":"Verify manually";
+  const authorRows=c.auths.map((a,i)=>{
+    const inst=(a.institutions||[]).map(x=>x.display_name).join("; ") || (a.raw_affiliation_strings||[])[0] || "";
+    return `<tr><td>${i+1}${a.is_corresponding?"*":""}</td><td>${esc(a.author?.display_name||"")}<div class="meta">${esc(String(a.author?.orcid||"").replace(/^https?:\/\/orcid\.org\//,""))}</div></td>
+      <td></td><td></td><td>${esc(inst)}</td><td></td><td>${a.aff?"Yes":"No"}</td><td></td><td>${esc(String(c.pcts[i]??"").replace(/(\.\d\d)\d+/,"$1"))}%</td><td>${c.pay[i]?esc(money(c.pay[i])):(((c.final==="eligible"||c.final==="approved")&&(a.aff||!R.payOnlyAffiliated)&&c.cat)?"0 (over per-author cap)":"—")}</td><td></td><td></td></tr>`;
+  }).join("");
+  const metricRows=c.auths.map((a,i)=>{ const A=a.author?.id?S.authors.get(sid(a.author.id)):null;
+    return `<tr><td>${i+1}</td><td>${esc(a.author?.display_name||"")}</td><td class="num">${fmt(A?.works_count??null)}</td><td class="num">${fmt(A?.cited_by_count??null)}</td><td class="num">${fmt(A?.summary_stats?.h_index??null)}</td></tr>`; }).join("");
+  const status = c.final==="approved"?"Approved after manual review":c.final==="rejected"?"Not eligible":c.final==="review"?"Pending manual review":"Eligible";
+  return `<div class="form">
+    <div class="meta">${esc(R.name)}</div>
+    <h1>Publication Reward Application — Verification Record</h1>
+    <div class="meta">Generated ${new Date().toLocaleString()} from OpenAlex (openalex.org/${esc(c.id)}). Pre-filled fields must be checked against the published PDF.</div>
+
+    <h2>1. Claim</h2>
+    <div>${box(true)} Published during affiliation with ${esc(R.institution?.name||R.affText)} (${c.nAff} affiliated author${c.nAff===1?"":"s"} on the paper)</div>
+    <div>${box(!(R.lists.paidDois||[]).length || !c.fails.some(f=>/Already rewarded/.test(f)))} Submitted for the first time (DOI not on the already-rewarded list)</div>
+    <div style="margin-top:4px">Article type: ${box(c.type==="article")} Full-length original research article &nbsp; ${box(c.type==="review")} Review article &nbsp; ${box(c.type==="book")} Book &nbsp; ${box(c.type==="book-chapter")} Book chapter &nbsp; Other: ${["article","review","book","book-chapter"].includes(c.type)?"":esc(c.type)}</div>
+    <div>Indexed in: ${box(c.ix.wos==="y")} Web of Science &nbsp; ${box(c.ix.scopus==="y")} Scopus &nbsp; ${box(c.ix.pubmed==="y")} PubMed &nbsp; ${box(c.national)} Nationally accredited</div>
+    <div>Reward category: <b>${esc(c.cat?.label||"—")}</b> · rate ${c.cat?esc(money(c.cat.rate||0)):"—"} per paper</div>
+
+    <h2>2. Publication</h2>
+    <table><tbody>
+      <tr><th style="width:22%">Title</th><td colspan="3">${esc(w.display_name||w.title||"")}</td></tr>
+      <tr><th>Journal</th><td colspan="3">${esc(src.display_name||"")}</td></tr>
+      <tr><th>Publisher</th><td>${esc(src.host_organization_name||"")}</td><th>ISSN</th><td>${esc([src.issn_l,...(src.issn||[]).filter(x=>x!==src.issn_l)].filter(Boolean).join(", "))}</td></tr>
+      <tr><th>Volume</th><td>${esc(b.volume||"")}</td><th>Issue</th><td>${esc(b.issue||"")}</td></tr>
+      <tr><th>Pages</th><td>${esc(pages)}</td><th>Year / date</th><td>${esc(w.publication_year||"")} (${esc(w.publication_date||"")})</td></tr>
+      <tr><th>DOI</th><td>${c.doi?esc(c.doi):"—"}</td><th>PMID</th><td>${esc(String(w.ids?.pmid||"").replace(/\D+/g,"")||"—")}</td></tr>
+    </tbody></table>
+
+    <h2>3. Eligibility checks</h2>
+    <table><thead><tr><th style="width:28%">Check</th><th style="width:18%">Result</th><th>Evidence</th></tr></thead><tbody>
+      ${chk("Published within the window", w.publication_date&&w.publication_date>=R.window.from&&w.publication_date<=R.window.to?"Yes":"Check", `${esc(w.publication_date||"?")} (window ${esc(R.window.from)} → ${esc(R.window.to)})`)}
+      ${chk("Institution affiliation on the paper", c.nAff?"Yes":"No", esc(c.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join(", ")||"none"))}
+      ${chk("Scopus", ixTxt(c.ix.scopus), "OpenAlex source record"+((R.lists.scopus||[]).length?" + institution list":""))}
+      ${chk("Web of Science", ixTxt(c.ix.wos), (R.lists.wos||[]).length?"Institution-supplied WoS list":"Check the WoS Master Journal List: mjl.clarivate.com")}
+      ${chk("PubMed", ixTxt(c.ix.pubmed), "OpenAlex indexed_in / PMID")}
+      ${chk("Nationally accredited list", c.national?"Yes":"No", "Institution-supplied list")}
+      ${chk("Journal integrity", TIER[c.tier]?.label||"—", esc((c.tierReasons||[]).join("; ")||"")+(src.is_in_doaj?" · in DOAJ":""))}
+      ${chk("Retraction status", w.is_retracted?"RETRACTED":"Not retracted", "OpenAlex is_retracted")}
+      ${chk("Duplicate claim", c.fails.some(f=>/Already rewarded/.test(f))?"Already rewarded":"Not on paid list", "")}
+      ${R.requireInstEmail?chk("Institutional email used by affiliated authors", "Verify", `${box(false)} confirmed on the PDF`):""}
+    </tbody></table>
+    <div style="margin-top:6px">Automatic outcome: <b>${esc(status)}</b>${[...c.fails,...c.review].length?` — ${esc([...c.fails,...c.review].join("; "))}`:""}</div>
+
+    <h2>4. Authors and payment (order of importance = byline order; * corresponding)</h2>
+    <table><thead><tr><th>#</th><th>Name / ORCID</th><th>Qualification</th><th>Academic rank</th><th>Institution / college</th><th>Department</th><th>Affiliated</th><th>Institutional email</th><th>Share</th><th>Amount</th><th>Bank account</th><th>Mobile</th></tr></thead><tbody>${authorRows}</tbody></table>
+    <div class="meta">Amounts reflect the author-share table${R.payOnlyAffiliated?"; shares of non-affiliated authors are not paid":""} and per-author caps across all claims in this call.</div>
+
+    <h2>5. Author and journal metrics (OpenAlex, ${new Date().toISOString().slice(0,10)})</h2>
+    <table><thead><tr><th>#</th><th>Author</th><th>Total publications</th><th>Total citations</th><th>h-index</th></tr></thead><tbody>${metricRows}</tbody></table>
+    <div style="margin-top:6px">Journal Impact Factor (Clarivate JCR): ____________ &nbsp;·&nbsp; Open alternative — OpenAlex 2-year mean citedness: <b>${fmt(src.summary_stats?.["2yr_mean_citedness"]??null)}</b>, journal h-index: <b>${fmt(src.summary_stats?.h_index??null)}</b></div>
+
+    <h2>6. Declarations</h2>
+    <div>We certify that the information above is correct and accurate, that the work has not been rewarded before, and that it complies with the institution's research-ethics policy.</div>
+    <div class="sig">${c.auths.filter(a=>a.aff).slice(0,6).map(a=>`<div>${esc(a.author?.display_name||"")} — signature / date</div>`).join("")||"<div>Signature / date</div>"}</div>
+    <h2>7. Directorate verification</h2>
+    <div>Decision: ${box(c.final==="eligible"||c.final==="approved")} Approved &nbsp; ${box(c.final==="rejected")} Rejected &nbsp; ${box(c.final==="review")} Returned for information &nbsp;&nbsp; Total approved: <b>${esc(money(c.pay.reduce((s,x)=>s+x,0)))}</b></div>
+    <div class="sig"><div>Checked by (name, signature)</div><div>Director (name, signature)</div><div>Date / stamp</div></div>
+  </div>`;
+}
+function openForms(list){
+  $("#formBody").innerHTML=list.map(formHTML).join("");
+  $("#formModal").classList.remove("hidden"); $("#formModal").scrollTop=0;
+}
+
+/* ================= MANAGEMENT DASHBOARD ================= */
+const BANDS = [
+  {id:"exc",  label:"Excellent",  c:"var(--b-exc)", rule:"In the top 10% most-cited papers of its field and year (OpenAlex normalised percentile)"},
+  {id:"str",  label:"Strong",     c:"var(--b-str)", rule:"High-impact or established journal, or field-weighted citation impact (FWCI) ≥ 1.0"},
+  {id:"std",  label:"Standard",   c:"var(--b-std)", rule:"Indexed venue (Scopus, Web of Science list, PubMed, DOAJ, CWTS core) or on the national accredited list"},
+  {id:"unv",  label:"Unverified", c:"var(--b-unv)", rule:"No indexing evidence — preprints, unindexed journals, missing venue"},
+  {id:"risk", label:"⚠ Integrity risk", c:"var(--b-risk)", rule:"Retracted, or journal on the watchlist, or journal with warning signals"},
+];
+const BAND = Object.fromEntries(BANDS.map(b=>[b.id,b]));
+const bandTag = id => `<span class="band" style="--c:${BAND[id].c}">${esc(BAND[id].label)}</span>`;
+let mgmtState=null;
+
+function assessWork(w){
+  const c=screenWork(w);                     // institution rules (DMU etc.)
+  const pct=w.citation_normalized_percentile||{};
+  const fwci=typeof w.fwci==="number"?w.fwci:null;
+  const intl=(w.countries_distinct_count||0)>=2;
+  const instId=R.institution?.id;
+  const corr=(w.corresponding_institution_ids||[]).map(sid);
+  const led = corr.length ? (instId && corr.includes(instId)) : !!c.auths[0]?.aff;
+  const oa=!!w.open_access?.is_oa;
+  const src=c.srcId?S.sources.get(c.srcId):null;
+  const indexed = c.indexed || c.national || !!src?.is_in_doaj || !!src?.is_core || c.ix.scopus==="y";
+  const riskWhy=[];
+  if(w.is_retracted) riskWhy.push("Retracted");
+  if(c.tier==="flagged") riskWhy.push(c.tierReasons[0]||"Journal on watchlist");
+  if(c.tier==="caution") riskWhy.push("Journal warning signals: "+c.tierReasons.join("; "));
+  let band;
+  if(riskWhy.length) band="risk";
+  else if(pct.is_in_top_10_percent) band="exc";
+  else if(c.tier==="high"||c.tier==="solid"||(fwci!=null&&fwci>=1)) band="str";
+  else if(indexed) band="std";
+  else band="unv";
+  const lv = channelLevel(src);
+  return {...c, pct, fwci, intl, led, oa, indexed, band, riskWhy, lv, year:w.publication_year,
+          field:w.primary_topic?.field?.display_name||"Unclassified", top1:!!pct.is_in_top_1_percent, top10:!!pct.is_in_top_10_percent,
+          dmuOk: c.status!=="rejected" && !!c.cat};
+}
+
+async function doMgmt(){
+  const p=S.picked.mgmtInst?.[0];
+  if(p) R.institution={id:p.id,name:p.name}; else await resolveInstitution();
+  if(!R.institution?.id) throw new Error("Pick the institution first.");
+  if(!R.affText || !norm(R.institution.name).includes(norm(R.affText))) { /* keep user's text; fine */ }
+  saveRules(); renderRulesEditor();
+  const y0=+$("#mY0").value||new Date().getFullYear()-4, y1=+$("#mY1").value||new Date().getFullYear();
+  store.set("mY0",y0); store.set("mY1",y1);
+  const max=+$("#mMax").value;
+  const wt=$("#wtype").value;
+  const base=[`publication_year:${y0}-${y1}`, ...(wt?[`type:${wt}`]:[])].join(",");
+  const byId=new Map();
+  for(const w of await fetchWorks(`authorships.institutions.id:${R.institution.id},${base}`, max)) byId.set(sid(w.id),w);
+  if(R.affText && byId.size<max){
+    setStatus("Searching affiliation text for unlinked papers…");
+    for(const w of await fetchWorks(`raw_affiliation_strings.search:${R.affText.replace(/[,|:]/g," ")},${base}`, max-byId.size)) if(!byId.has(sid(w.id))) byId.set(sid(w.id),{...w,_viaText:true});
+  }
+  const works=[...byId.values()];
+  await fetchSources([...new Set(works.map(w=>w.primary_location?.source?.id).filter(Boolean).map(sid))]);
+  await fetchPublishers([...S.sources.values()]);
+  mgmtState={works, y0, y1, at:new Date(), band:null, q:"", capped: works.length>=max,
+             rank:{by:"publisher", group:true, minN:2, w:{level:40, global:15, impact:20, integrity:25}}};
+  renderMgmt();
+}
+
+function pctTxt(n,d){ return d?`${(100*n/d).toFixed(1)}%`:"–"; }
+function mean(a){ const v=a.filter(x=>x!=null); return v.length? v.reduce((s,x)=>s+x,0)/v.length : null; }
+function median(a){ const v=a.filter(x=>x!=null).sort((x,y)=>x-y); if(!v.length) return null; const m=v.length>>1; return v.length%2?v[m]:(v[m-1]+v[m])/2; }
+
+function yearChart(rows, y0, y1){
+  const years=[]; for(let y=y0;y<=y1;y++) years.push(y);
+  const data=years.map(y=>{ const r=rows.filter(x=>x.year===y); const o={y, n:r.length}; for(const b of BANDS) o[b.id]=r.filter(x=>x.band===b.id).length; return o; });
+  const maxN=Math.max(1,...data.map(d=>d.n));
+  const el=document.createElement("div");
+  el.innerHTML=`<div class="blegend">${BANDS.map(b=>bandTag(b.id)).join("")}</div>
+    <div class="ychart" role="img" aria-label="Publications per year by quality band">${data.map(d=>`<div class="col" data-y="${d.y}" style="height:100%">${
+      ["exc","str","std","unv","risk"].map(b=>d[b]?`<div class="seg" data-y="${d.y}" data-b="${b}" style="height:max(2px, calc(${100*d[b]/maxN}% - 2px));background:${BAND[b].c}"></div>`:"").join("")
+    }</div>`).join("")}</div>
+    <div class="yaxis">${data.map(d=>`<div><b style="color:var(--ink)">${d.n}</b><br>${d.y}</div>`).join("")}</div>
+    <details style="margin-top:8px"><summary class="small muted" style="cursor:pointer">Show as table</summary>
+      <table style="margin-top:6px"><thead><tr><th>Year</th>${BANDS.map(b=>`<th class="num">${esc(b.label)}</th>`).join("")}<th class="num">Total</th></tr></thead>
+      <tbody>${data.map(d=>`<tr><td>${d.y}</td>${BANDS.map(b=>`<td class="num">${d[b.id]}</td>`).join("")}<td class="num"><b>${d.n}</b></td></tr>`).join("")}</tbody></table></details>`;
+  // column-reverse: first segment (Excellent) sits at the base, Integrity risk on top
+  const tip=document.querySelector(".vtip")||Object.assign(document.body.appendChild(document.createElement("div")),{className:"vtip"});
+  el.querySelectorAll(".col").forEach(col=>{
+    col.addEventListener("mousemove",e=>{
+      const d=data.find(x=>String(x.y)===col.dataset.y); const hov=e.target.closest(".seg")?.dataset.b;
+      tip.innerHTML=`<b>${d.y}</b> · ${d.n} papers<br>${BANDS.map(b=>`<span style="${hov===b.id?"font-weight:700":""}">${bandTag(b.id)} ${d[b.id]} (${pctTxt(d[b.id],d.n)})</span>`).join("<br>")}`;
+      tip.style.display="block"; tip.style.left=Math.min(e.clientX+14, innerWidth-260)+"px"; tip.style.top=(e.clientY+14)+"px";
+    });
+    col.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+  return el;
+}
+
+S.publishers = new Map();
+async function fetchPublishers(sources){
+  const ids=[...new Set(sources.flatMap(s=>[s.host_organization, ...(s.host_organization_lineage||[])]).filter(Boolean).map(sid).filter(x=>/^P\d+$/.test(x)))];
+  const need=ids.filter(id=>!S.publishers.has(id));
+  const parts=chunk(need,100);
+  for(let i=0;i<parts.length;i++){
+    setStatus(`Fetching publisher records ${Math.min((i+1)*100,need.length)} / ${need.length}…`);
+    try{ const j=await oa("/publishers",{filter:"openalex_id:"+parts[i].join("|"), per_page:100}); for(const p of j.results||[]) S.publishers.set(sid(p.id),p); }
+    catch(e){ if(e.status===429) throw e; /* publisher stats are optional */ }
+  }
+}
+function publisherKey(src, group){
+  const own=sid(src.host_organization||"");
+  if(!/^P\d+$/.test(own)) return {k:"name:"+norm(src.host_organization_name||"unknown"), name:src.host_organization_name||"Unknown publisher", pid:null};
+  let pid=own;
+  if(group){
+    const lin=[own, ...(src.host_organization_lineage||[]).map(sid)].filter(x=>/^P\d+$/.test(x));
+    const withLvl=lin.map(id=>({id, h:S.publishers.get(id)?.hierarchy_level})).filter(o=>o.h!=null).sort((a,b)=>a.h-b.h);
+    if(withLvl.length) pid=withLvl[0].id; else if(lin.length) pid=lin[lin.length-1];
+  }
+  const P=S.publishers.get(pid);
+  return {k:pid, name:P?.display_name || (pid===own?src.host_organization_name:pid), pid};
+}
+const GRADE = s => s>=80?"A":s>=65?"B":s>=50?"C":s>=35?"D":"E";
+const DMU_GRADE = f => f>=0.8?"Accepted":f>=0.5?"Mostly accepted":f>=0.2?"Partly accepted":"Not accepted";
+function estValue(r){ return r.dmuOk ? (r.cat?.rate||0)*r.auths.reduce((t,a,i)=>t+((!R.payOnlyAffiliated||a.aff)?(r.pcts[i]||0):0),0)/100 : 0; }
+function lvlNum(l){ return l===2?1 : l===1?0.5 : 0; }
+
+function rankEntities(rows, opt){
+  const groups=new Map();
+  for(const r of rows){
+    if(!r.src) continue;
+    const s=S.sources.get(r.srcId)||r.src;
+    const key = opt.by==="journal" ? {k:r.srcId, name:s.display_name, pid:null, sub:s.host_organization_name||""} : publisherKey(s, opt.group);
+    const g=groups.get(key.k)||{...key, rs:[], journals:new Set()}; g.rs.push(r); g.journals.add(r.srcId); groups.set(key.k,g);
+  }
+  const W=opt.w;
+  const out=[...groups.values()].map(g=>{
+    const n=g.rs.length, lv={2:0,1:0,0:0,X:0,"–":0};
+    for(const r of g.rs){ const l=r.lv?.lvl; lv[l===null||l===undefined?"–":l]++; }
+    const P=g.pid?S.publishers.get(g.pid):null;
+    const src0=S.sources.get(g.rs[0].srcId);
+    const globalCit = opt.by==="journal" ? (src0?.summary_stats?.["2yr_mean_citedness"]??null) : (P?.summary_stats?.["2yr_mean_citedness"]??null);
+    const fw=mean(g.rs.map(r=>r.fwci));
+    const risk=g.rs.filter(r=>r.band==="risk").length;
+    const comps=[
+      {w:W.level, v:g.rs.reduce((s,r)=>s+lvlNum(r.lv?.lvl),0)/n},
+      {w:W.global, v:globalCit==null?null:Math.min(globalCit/4,1)},
+      {w:W.impact, v:fw==null?null:Math.min(fw/1.5,1)},
+      {w:W.integrity, v:1-risk/n},
+    ].filter(c=>c.v!=null && c.w>0);
+    const wsum=comps.reduce((s,c)=>s+c.w,0)||1;
+    let score=100*comps.reduce((s,c)=>s+c.w*c.v,0)/wsum;
+    const pubName = opt.by==="journal" ? (src0?.host_organization_name||"") : g.name;
+    const onWatch = !!(pubName && S.watch.publishers.has(norm(pubName)));
+    let grade=GRADE(score); if(onWatch || lv.X/n>=0.5) grade="E";
+    const dmuN=g.rs.filter(r=>r.dmuOk).length, dmuShare=dmuN/n, value=g.rs.reduce((s,r)=>s+estValue(r),0);
+    return {...g, n, nj:g.journals.size, lv, globalCit, h:opt.by==="journal"?(src0?.summary_stats?.h_index??null):(P?.summary_stats?.h_index??null),
+      fwci:fw, top10:g.rs.filter(r=>r.top10).length/n, risk, score, grade, onWatch, dmuN, dmuShare, dmuGrade:DMU_GRADE(dmuShare), value,
+      provisional:n<opt.minN};
+  });
+  const rankBy=(arr,cmp,field)=>{ const ok=arr.filter(x=>!x.provisional).sort(cmp); ok.forEach((x,i)=>x[field]=i+1); arr.filter(x=>x.provisional).forEach(x=>x[field]=null); };
+  rankBy(out,(a,b)=>b.score-a.score||b.n-a.n,"intlRank");
+  rankBy(out,(a,b)=>b.dmuShare-a.dmuShare||b.value-a.value||b.n-a.n,"dmuRank");
+  for(const x of out){
+    const hi="AB".includes(x.grade), lo="DE".includes(x.grade);
+    x.gap = lo && x.dmuShare>=0.5 ? "risk" : hi && x.dmuShare<0.5 ? "missed" : "aligned";
+  }
+  return out;
+}
+
+function rankingPanel(rows, st){
+  const o=st.rank;
+  const p=document.createElement("div"); p.className="panel"; p.id="mgmtRank";
+  const list=rankEntities(rows,o);
+  const ent=o.by==="journal"?"journal":"publisher";
+  const cntG=g=>list.filter(x=>!x.provisional&&x.grade===g).length;
+  const gaps={risk:list.filter(x=>x.gap==="risk"&&!x.provisional), missed:list.filter(x=>x.gap==="missed"&&!x.provisional)};
+  p.innerHTML=`<div class="toolbar"><h2 style="margin:0">${o.by==="journal"?"Journal":"Publisher"} ranking — international standard vs ${esc((R.name||"").split("—")[0].trim()||"institution")} rules</h2></div>
+    <p class="small muted" style="margin:0 0 10px">Every ${ent} the institution published with gets two independent ratings: an <b>international score</b> (channel level from JUFO / the Norwegian Register when loaded, otherwise an open estimate; the ${ent}'s global citation level; the field-normalised impact of these papers; and integrity), and the <b>institution's own rules</b> (share of papers that qualify for reward). The last column shows where the two disagree.</p>
+    <div class="row" style="margin-bottom:10px">
+      <label class="f">Rank<select class="rk-by"><option value="publisher">Publishers</option><option value="journal">Journals</option></select></label>
+      <label class="small" style="align-self:center"><input type="checkbox" class="rk-group" ${o.group?"checked":""}> group imprints under parent publisher</label>
+      <label class="f">Min. papers to rank<select class="rk-min">${[1,2,3,5,10].map(v=>`<option ${v===o.minN?"selected":""}>${v}</option>`).join("")}</select></label>
+      <span class="small muted" style="align-self:center">Weights:</span>
+      ${[["level","Channel level"],["global","Global citation"],["impact","Paper impact"],["integrity","Integrity"]].map(([k,l])=>`<label class="f">${l}<input type="number" class="rk-w" data-k="${k}" value="${o.w[k]}" min="0" max="100" style="width:72px"></label>`).join("")}
+      <span class="spacer"></span><button class="small dl">Download CSV</button>
+    </div>
+    <div class="kpis">
+      ${["A","B","C","D","E"].map(g=>`<div class="kpi"><div class="n">${g==="E"?"⚠ ":""}${cntG(g)}</div><div class="l">grade ${g} ${ent}s</div></div>`).join("")}
+      <div class="kpi"><div class="n" style="color:var(--b-risk)">⚠ ${gaps.risk.length}</div><div class="l">rewarded by local rules but grade D/E internationally</div></div>
+      <div class="kpi"><div class="n">${gaps.missed.length}</div><div class="l">grade A/B internationally but mostly not rewarded locally</div></div>
+    </div>
+    <div class="tw"></div>
+    <p class="small muted" style="margin:8px 0 0">Grade: A ≥ 80 · B ≥ 65 · C ≥ 50 · D ≥ 35 · E below, or publisher on the watchlist, or ≥ half its papers at level X. Components with no data are left out and the remaining weights rescaled. ${o.minN>1?`${ent[0].toUpperCase()+ent.slice(1)}s with fewer than ${o.minN} papers are listed unranked (“prov.”).`:""}</p>`;
+  const cols=[
+    {k:"intlRank",h:"Intl rank",num:true,sortv:r=>r.intlRank??1e9,html:r=>r.intlRank??`<span class="muted small">prov.</span>`},
+    {k:"name",h:o.by==="journal"?"Journal":"Publisher",html:r=>`${r.pid?`<a href="https://openalex.org/${r.pid}" target="_blank" rel="noopener">${esc(r.name)}</a>`:o.by==="journal"?`<a href="https://openalex.org/${r.k}" target="_blank" rel="noopener">${esc(r.name)}</a>`:esc(r.name)}<div class="flagnote">${o.by==="journal"?esc(r.sub||""):`${r.nj} journal${r.nj===1?"":"s"}`}${r.onWatch?` · <b style="color:var(--b-risk)">⚠ on watchlist</b>`:""}</div>`},
+    {k:"n",h:"Papers",num:true},
+    {k:"lvmix",h:"Channel levels",sortv:r=>(r.lv[2]*2+r.lv[1])/r.n,html:r=>`<div class="tierbar" style="height:10px;margin:4px 0;min-width:110px">${[2,1,0,"X","–"].filter(l=>r.lv[l]).map(l=>`<div title="${l==="–"?"no level":l==="X"?"Level X (integrity risk)":"Level "+l}: ${r.lv[l]}" style="width:${100*r.lv[l]/r.n}%;background:${LVL_C[l]}"></div>`).join("")}</div><div class="flagnote">L2 ${r.lv[2]} · L1 ${r.lv[1]} · L0 ${r.lv[0]}${r.lv.X?` · X ${r.lv.X}`:""}</div>`},
+    {k:"globalCit",h:o.by==="journal"?"Journal 2-yr citedness":"Publisher 2-yr citedness",num:true},
+    {k:"fwci",h:"Mean FWCI",num:true},
+    {k:"top10",h:"Top 10%",num:true,html:r=>(100*r.top10).toFixed(0)+"%"},
+    {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">${r.risk}</b>`:`<span class="muted">0</span>`},
+    {k:"score",h:"Intl score",num:true,html:r=>`<b>${r.score.toFixed(0)}</b> <span class="chip" style="padding:0 7px;${r.grade==="E"?"color:#fff;background:var(--b-risk);border-color:var(--b-risk)":""}"><b style="color:inherit">${r.grade==="E"?"⚠ ":""}${r.grade}</b></span>`},
+    {k:"dmuShare",h:"Local rules",num:true,html:r=>`<b>${(100*r.dmuShare).toFixed(0)}%</b> qualify<div class="flagnote">${esc(r.dmuGrade)} · ≈ ${esc(money(r.value))}</div>`},
+    {k:"dmuRank",h:"Local rank",num:true,sortv:r=>r.dmuRank??1e9,html:r=>r.dmuRank??`<span class="muted small">prov.</span>`},
+    {k:"gap",h:"Assessment",sortv:r=>({risk:0,missed:1,aligned:2})[r.gap],html:r=>r.gap==="risk"?`<b style="color:var(--b-risk)">⚠ Rewarded locally, below international standard</b>`:r.gap==="missed"?`<b>High international standard, mostly not rewarded</b>`:`<span class="muted">Aligned</span>`},
+  ];
+  table(p.querySelector(".tw"), list, cols, {sort:"intlRank", dir:1});
+  p.querySelector(".rk-by").value=o.by;
+  p.querySelector(".rk-by").onchange=e=>{ o.by=e.target.value; renderMgmt(); document.getElementById("mgmtRank")?.scrollIntoView(); };
+  p.querySelector(".rk-group").onchange=e=>{ o.group=e.target.checked; renderMgmt(); document.getElementById("mgmtRank")?.scrollIntoView(); };
+  p.querySelector(".rk-min").onchange=e=>{ o.minN=+e.target.value; renderMgmt(); document.getElementById("mgmtRank")?.scrollIntoView(); };
+  p.querySelectorAll(".rk-w").forEach(i=>i.onchange=()=>{ o.w[i.dataset.k]=Math.max(0,+i.value||0); renderMgmt(); document.getElementById("mgmtRank")?.scrollIntoView(); });
+  p.querySelector(".dl").onclick=()=>download(`${ent}_ranking_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV([...list].sort((a,b)=>(a.intlRank??1e9)-(b.intlRank??1e9)), [
+    {k:"intlRank",h:"international_rank"},{k:"name",h:ent},{k:"pid",h:"openalex_id",csv:r=>r.pid||(o.by==="journal"?r.k:"")},{k:"n",h:"papers"},{k:"nj",h:"journals"},
+    {k:"l2",h:"level2_papers",csv:r=>r.lv[2]},{k:"l1",h:"level1_papers",csv:r=>r.lv[1]},{k:"l0",h:"level0_papers",csv:r=>r.lv[0]},{k:"lx",h:"levelX_papers",csv:r=>r.lv.X},
+    {k:"globalCit",h:"two_year_citedness"},{k:"h",h:"h_index"},{k:"fwci",h:"mean_fwci"},{k:"top10",h:"top10_share",csv:r=>(100*r.top10).toFixed(1)},{k:"risk",h:"risk_papers"},
+    {k:"score",h:"international_score",csv:r=>r.score.toFixed(1)},{k:"grade",h:"international_grade"},{k:"onWatch",h:"publisher_on_watchlist",csv:r=>r.onWatch?"yes":"no"},
+    {k:"dmuShare",h:"local_rules_qualifying_share",csv:r=>(100*r.dmuShare).toFixed(1)},{k:"dmuGrade",h:"local_rules_rating"},{k:"value",h:"local_reward_estimate",csv:r=>Math.round(r.value)},
+    {k:"dmuRank",h:"local_rank"},{k:"gap",h:"assessment"},{k:"provisional",h:"provisional",csv:r=>r.provisional?"yes":"no"},
+  ]));
+  return p;
+}
+
+function renderMgmt(){
+  const out=$("#mgmtOut"); if(!mgmtState){ out.innerHTML=""; return; }
+  const st=mgmtState; const rows=st.works.map(assessWork); st.rows=rows;
+  const P=rows.length, cnt=f=>rows.filter(f).length;
+  const withF=rows.filter(r=>r.fwci!=null);
+  const recentCut=new Date().getFullYear()-1;
+  out.innerHTML="";
+
+  // KPIs
+  const k=document.createElement("div"); k.className="panel";
+  const dmuEligible=rows.filter(r=>r.dmuOk);
+  const dmuValue=dmuEligible.reduce((s,r)=>s+(r.cat?.rate||0)*r.auths.reduce((t,a,i)=>t+((!R.payOnlyAffiliated||a.aff)?(r.pcts[i]||0):0),0)/100,0);
+  k.innerHTML=`<div class="card"><span class="big">${esc(R.institution.name)}</span><span class="kv"><span><b>${st.y0}–${st.y1}</b></span><span>Data: OpenAlex, ${st.at.toLocaleString()}</span><span>Rules: ${esc(R.name)}</span></span></div>
+    ${st.capped?`<div class="warnbox">Stopped at the “Max papers” limit — raise it or narrow the years for complete figures.</div>`:""}
+    <div class="kpis">
+      <div class="kpi"><div class="n">${P.toLocaleString()}</div><div class="l">publications (P)</div><div class="sub">${cnt(r=>r.w._viaText)} found only via affiliation text</div></div>
+      <div class="kpi"><div class="n">${pctTxt(cnt(r=>r.top10),P)}</div><div class="l">in world top 10% most cited</div><div class="sub">${cnt(r=>r.top10)} papers · world benchmark 10% · ${cnt(r=>r.top1)} in top 1%</div></div>
+      <div class="kpi"><div class="n">${fmt(mean(withF.map(r=>r.fwci)))}</div><div class="l">mean field-weighted citation impact</div><div class="sub">median ${fmt(median(withF.map(r=>r.fwci)))} · world = 1.00</div></div>
+      <div class="kpi"><div class="n">${pctTxt(cnt(r=>r.intl),P)}</div><div class="l">international co-authorship</div><div class="sub">≥2 countries on the paper</div></div>
+      <div class="kpi"><div class="n">${pctTxt(cnt(r=>r.led),P)}</div><div class="l">institution-led</div><div class="sub">corresponding author here (else first author)</div></div>
+      <div class="kpi"><div class="n">${pctTxt(cnt(r=>r.oa),P)}</div><div class="l">open access</div><div class="sub">any free full text</div></div>
+      <div class="kpi"><div class="n">${pctTxt(cnt(r=>r.indexed),P)}</div><div class="l">in indexed / accredited venues</div><div class="sub">Scopus, WoS list, PubMed, DOAJ, CWTS core, national list</div></div>
+      <div class="kpi"><div class="n" style="color:var(--b-risk)">⚠ ${cnt(r=>r.band==="risk")}</div><div class="l">integrity-risk papers</div><div class="sub">${cnt(r=>r.w.is_retracted)} retracted · ${cnt(r=>r.tier==="flagged")} watchlist · ${cnt(r=>r.tier==="caution")} warning</div></div>
+      <div class="kpi"><div class="n">${dmuEligible.length.toLocaleString()}</div><div class="l">would qualify under ${esc((R.name||"").split("—")[0].trim()||"institution")} rules</div><div class="sub">≈ ${esc(money(dmuValue))} before caps & windows</div></div>
+    </div>
+    ${!watchSize()?`<div class="warnbox">No predatory watchlist loaded — the integrity-risk figure only reflects retractions and warning signals. Load one in <b>Settings</b>.</div>`:""}
+    <p class="small muted" style="margin:6px 0 0">Citation indicators for ${recentCut}–${st.y1} are provisional: papers need ~2–3 years to accumulate citations.</p>`;
+  out.appendChild(k);
+
+  // Year chart + quality band cards
+  const yc=document.createElement("div"); yc.className="panel";
+  yc.innerHTML=`<h2>Output by year and quality band</h2><p class="small muted" style="margin-top:0">Each paper gets one band, checked top-down: integrity risk first, then excellence, strength, standard. Click a band below to list its papers.</p>`;
+  yc.appendChild(yearChart(rows, st.y0, st.y1));
+  const bc=document.createElement("div"); bc.className="tiercards";
+  bc.innerHTML=BANDS.map(b=>`<div class="tc${st.band===b.id?" sel":""}" style="--c:${b.c}" data-band="${b.id}"><div class="l">${esc(b.label)}</div><div class="n">${pctTxt(cnt(r=>r.band===b.id),P)}</div><div class="s">${cnt(r=>r.band===b.id).toLocaleString()} papers</div><div class="s" style="margin-top:4px">${esc(b.rule)}</div></div>`).join("");
+  bc.querySelectorAll(".tc").forEach(c=>c.onclick=()=>{ st.band=st.band===c.dataset.band?null:c.dataset.band; renderMgmt(); document.getElementById("mgmtPapers")?.scrollIntoView({behavior:"smooth"}); });
+  yc.appendChild(bc);
+  out.appendChild(yc);
+
+  // Fields
+  const fp=document.createElement("div"); fp.className="panel";
+  const fields=new Map(); for(const r of rows){ const a=fields.get(r.field)||[]; a.push(r); fields.set(r.field,a); }
+  const fRows=[...fields].map(([f,a])=>({field:f, P:a.length, top10:a.filter(r=>r.top10).length/a.length, fwci:mean(a.map(r=>r.fwci)), intl:a.filter(r=>r.intl).length/a.length, risk:a.filter(r=>r.band==="risk").length, dmu:a.filter(r=>r.dmuOk).length}));
+  const maxP=Math.max(1,...fRows.map(r=>r.P));
+  fp.innerHTML=`<h2>By research field</h2><p class="small muted" style="margin-top:0">OpenAlex primary topic → field. Compare fields on the normalised indicators, not raw counts.</p><div class="tw"></div>`;
+  table(fp.querySelector(".tw"), fRows, [
+    {k:"field",h:"Field"},
+    {k:"P",h:"Papers",num:true,html:r=>`<span class="inbar" style="width:${Math.max(2,70*r.P/maxP)}px"></span>${r.P}`},
+    {k:"top10",h:"Top 10% share",num:true,html:r=>(100*r.top10).toFixed(1)+"%"},
+    {k:"fwci",h:"Mean FWCI",num:true},
+    {k:"intl",h:"International",num:true,html:r=>(100*r.intl).toFixed(0)+"%"},
+    {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">${r.risk}</b>`:`<span class="muted">0</span>`},
+    {k:"dmu",h:"Reward-eligible",num:true},
+  ], {sort:"P"});
+  out.appendChild(fp);
+  out.appendChild(rankingPanel(rows, st));
+
+  // Researchers
+  const rp=document.createElement("div"); rp.className="panel";
+  const ppl=new Map();
+  for(const r of rows) r.auths.forEach((a,i)=>{ if(!a.aff||!a.author?.id) return; const id=sid(a.author.id);
+    const o=ppl.get(id)||{id,name:a.author.display_name,orcid:String(a.author.orcid||"").replace(/^https?:\/\/orcid\.org\//,""),rs:[]}; o.rs.push({r,i}); ppl.set(id,o); });
+  const pRows=[...ppl.values()].map(o=>{ const rs=o.rs.map(x=>x.r); const n=rs.length; const b={}; for(const B of BANDS) b[B.id]=rs.filter(r=>r.band===B.id).length;
+    return {...o, P:n, top10:rs.filter(r=>r.top10).length, fwci:median(rs.map(r=>r.fwci)), intl:rs.filter(r=>r.intl).length/n,
+      ledN:o.rs.filter(x=>x.r.led && (x.r.w.corresponding_institution_ids?.length ? (x.r.auths[x.i].is_corresponding) : x.i===0)).length,
+      risk:b.risk, dmu:rs.filter(r=>r.dmuOk).length, bands:b}; });
+  rp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Researchers</h2><span class="grow"></span>
+    <label class="small"><input type="checkbox" class="rk"> only people with ⚠ risk papers</label>
+    <input class="af" placeholder="filter by name…" style="width:180px"><button class="small dl">Download CSV</button></div>
+    <p class="small muted" style="margin:0 0 8px">Affiliated authors on the papers above. Per the Leiden Manifesto and DORA, use these figures to start conversations and spot integrity issues — not to rank or reward individuals on metrics alone.</p><div class="tw"></div>`;
+  const rCols=[
+    {k:"name",h:"Researcher",html:r=>`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>${r.orcid?`<div class="flagnote">${esc(r.orcid)}</div>`:""}`},
+    {k:"P",h:"Papers",num:true},
+    {k:"mix",h:"Band mix",sortv:r=>(r.bands.exc*4+r.bands.str*3+r.bands.std*2)/r.P,html:r=>`<div class="tierbar" style="height:10px;margin:4px 0;min-width:110px">${["exc","str","std","unv","risk"].filter(b=>r.bands[b]).map(b=>`<div title="${esc(BAND[b].label)}: ${r.bands[b]}" style="width:${100*r.bands[b]/r.P}%;background:${BAND[b].c}"></div>`).join("")}</div>`},
+    {k:"top10",h:"Top 10% papers",num:true},
+    {k:"fwci",h:"Median FWCI",num:true},
+    {k:"intl",h:"International",num:true,html:r=>(100*r.intl).toFixed(0)+"%"},
+    {k:"ledN",h:"As corresponding",num:true},
+    {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">⚠ ${r.risk}</b>`:`<span class="muted">0</span>`},
+    {k:"dmu",h:"Reward-eligible",num:true},
+  ];
+  const rRows=()=>{ const q=norm(rp.querySelector(".af").value), rk=rp.querySelector(".rk").checked; return pRows.filter(r=>(!rk||r.risk)&&(!q||norm(r.name).includes(q))); };
+  const rDraw=()=>table(rp.querySelector(".tw"), rRows(), rCols, {sort:"P"});
+  rp.querySelector(".af").addEventListener("input",rDraw); rp.querySelector(".rk").addEventListener("change",rDraw); rDraw();
+  rp.querySelector(".dl").onclick=()=>download(`researchers_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(rRows(), [
+    {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"P",h:"papers"},
+    ...BANDS.map(b=>({k:"b_"+b.id,h:"band_"+b.id,csv:r=>r.bands[b.id]})),{k:"top10",h:"top10_papers"},{k:"fwci",h:"median_fwci"},
+    {k:"intl",h:"international_share",csv:r=>(100*r.intl).toFixed(1)},{k:"ledN",h:"as_corresponding"},{k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
+  out.appendChild(rp);
+
+  // Risk register
+  const risk=rows.filter(r=>r.band==="risk");
+  if(risk.length){
+    const kp=document.createElement("div"); kp.className="panel";
+    kp.innerHTML=`<h2>⚠ Integrity risk register (${risk.length})</h2><p class="small muted" style="margin-top:0">Papers to review with the authors. A flag is a reason to check, not a finding of misconduct.</p><div class="tw"></div>`;
+    table(kp.querySelector(".tw"), risk, [
+      {k:"why",h:"Reason",sortv:r=>r.riskWhy[0],html:r=>`<b style="color:var(--b-risk)">⚠</b> ${esc(r.riskWhy.join(" · "))}`},
+      {k:"t",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name)}</a>`:esc(r.w.display_name)}<div class="flagnote">${esc(r.w.publication_date||r.year)} · ${esc(r.src?.display_name||"")}</div>`},
+      {k:"a",h:"Affiliated authors",html:r=>esc(r.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join(", "))},
+    ], {sort:"why", dir:1});
+    out.appendChild(kp);
+  }
+
+  // Papers
+  const pp=document.createElement("div"); pp.className="panel"; pp.id="mgmtPapers";
+  pp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Papers${st.band?` — ${bandTag(st.band)}`:""}</h2><span class="grow"></span>
+    <input class="pf" placeholder="filter by title, journal, author…" style="width:240px" value="${esc(st.q)}"><button class="small dl">Download CSV</button></div><div class="tw"></div>`;
+  const pCols=[
+    {k:"band",h:"Band",sortv:r=>["risk","unv","std","str","exc"].indexOf(r.band),html:r=>bandTag(r.band)+(r.riskWhy.length?`<div class="flagnote">${esc(r.riskWhy.join("; "))}</div>`:"")},
+    {k:"t",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name)}</a>`:esc(r.w.display_name)}<div class="flagnote">${esc(String(r.year))} · ${esc(r.type)} · ${esc(r.field)}${r.w._viaText?" · via affiliation text":""}</div>`},
+    {k:"j",h:"Journal",sortv:r=>r.src?.display_name||"",html:r=>`${esc(r.src?.display_name||"—")}${r.src?`<div>${tierTag(r.tier)}</div>`:""}`},
+    {k:"lv",h:"Channel level",sortv:r=>({2:3,1:2,0:1,X:0})[r.lv?.lvl]??-1,html:r=>`${lvlTag(r.lv?.lvl, r.lv?.source)}<div class="flagnote">${esc(r.lv?.source||"")}</div>`},
+    {k:"fwci",h:"FWCI",num:true},
+    {k:"pv",h:"Citation percentile",num:true,sortv:r=>r.pct.value??null,html:r=>r.pct.value!=null?(100*r.pct.value).toFixed(0):"–"},
+    {k:"intl",h:"Intl.",html:r=>r.intl?"yes":""},
+    {k:"led",h:"Led",html:r=>r.led?"yes":""},
+    {k:"oa",h:"OA",html:r=>r.oa?"yes":""},
+    {k:"dmu",h:"Reward rules",sortv:r=>r.dmuOk?1:0,html:r=>r.dmuOk?`${esc(r.cat.label)}<div class="flagnote">${esc(money(r.cat.rate||0))}/paper${r.status==="review"?" · needs review":""}</div>`:`<span class="muted small">${esc((r.fails[0]||"—"))}</span>`},
+  ];
+  const pRowsF=()=>{ const q=norm(st.q); return rows.filter(r=>(!st.band||r.band===st.band)&&(!q||norm([r.w.display_name,r.src?.display_name,...r.auths.map(a=>a.author?.display_name)].join(" ")).includes(q))); };
+  const pDraw=()=>table(pp.querySelector(".tw"), pRowsF(), pCols, {sort:"band"});
+  pp.querySelector(".pf").addEventListener("input",e=>{ st.q=e.target.value; pDraw(); });
+  pp.querySelector(".dl").onclick=()=>download(`publications_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(pRowsF(), [
+    {k:"id",h:"openalex_id"},{k:"doi",h:"doi"},{k:"t",h:"title",csv:r=>r.w.display_name},{k:"year",h:"year"},{k:"type",h:"type"},{k:"field",h:"field"},
+    {k:"j",h:"journal",csv:r=>r.src?.display_name||""},{k:"tier",h:"journal_tier",csv:r=>TIER[r.tier]?.label||""},
+    {k:"band",h:"quality_band",csv:r=>BAND[r.band].label.replace("⚠ ","")},{k:"lv",h:"channel_level",csv:r=>r.lv?.lvl??""},{k:"lvs",h:"channel_level_source",csv:r=>r.lv?.source||""},
+    {k:"pub",h:"publisher",csv:r=>r.src?.host_organization_name||""},{k:"risk",h:"risk_reasons",csv:r=>r.riskWhy.join("; ")},
+    {k:"fwci",h:"fwci"},{k:"pv",h:"citation_percentile",csv:r=>r.pct.value!=null?(100*r.pct.value).toFixed(1):""},{k:"top10",h:"top10",csv:r=>r.top10?"yes":"no"},
+    {k:"intl",h:"international",csv:r=>r.intl?"yes":"no"},{k:"led",h:"institution_led",csv:r=>r.led?"yes":"no"},{k:"oa",h:"open_access",csv:r=>r.oa?"yes":"no"},
+    {k:"sc",h:"scopus",csv:r=>r.ix.scopus},{k:"pm",h:"pubmed",csv:r=>r.ix.pubmed},{k:"wos",h:"wos",csv:r=>r.ix.wos},
+    {k:"dmu",h:"reward_category",csv:r=>r.dmuOk?r.cat.label:""},{k:"st",h:"reward_status",csv:r=>r.status},{k:"why",h:"reward_reasons",csv:r=>[...r.fails,...r.review].join("; ")},
+    {k:"nAff",h:"affiliated_authors"},{k:"aa",h:"affiliated_author_names",csv:r=>r.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join("; ")},
+  ]));
+  pDraw();
+  out.appendChild(pp);
+
+  // Methodology
+  const mp=document.createElement("div"); mp.className="panel";
+  mp.innerHTML=`<details><summary style="cursor:pointer;font-weight:600">Methodology and standards</summary><div class="small" style="margin-top:8px;line-height:1.6">
+    <p><b>Indicators</b> follow the CWTS Leiden Ranking and common research-evaluation practice: publication count; share of papers in the world's top 10% / 1% most-cited for their field and year (OpenAlex <code>citation_normalized_percentile</code>); field-weighted citation impact (FWCI, world average = 1.0; median reported because citation data are skewed); international co-authorship (≥2 countries); institution-led papers (corresponding author affiliated; first author when OpenAlex has no corresponding author); open-access share; and the share in indexed or accredited venues.</p>
+    <p><b>Channel levels</b> follow the Nordic model used by Finnish (JUFO) and Norwegian institutions: 2 = leading, 1 = approved academic channel, 0 = not approved. When you load the official JUFO or Norwegian Register CSV, those levels are used (matched by ISSN); otherwise an open estimate is shown — level X for watchlist/warning journals, 2 for indexed journals with 2-yr citedness ≥ the High-impact threshold, 1 for other indexed journals (Scopus, WoS list, DOAJ, CWTS core), 0 otherwise.</p>
+    <p><b>Publisher / journal ranking</b>: international score = weighted mean of channel level (L2 = 1, L1 = 0.5, L0/X = 0), the publisher's or journal's global 2-yr citedness (capped at 4), mean FWCI of the institution's papers (capped at 1.5) and integrity (1 − share of risk papers); weights are editable. It is shown next to the share of papers that qualify under the institution's rules, so policy gaps are visible.</p>
+    <p><b>Integrity</b>: retraction status (OpenAlex), the predatory-journal watchlist you load, and the journal warning-signal heuristics in Settings. These are prompts for review, not findings.</p>
+    <p><b>Institution rules</b>: every paper is also checked against the active rule set (${esc(R.name)}) from the Publication incentive tab, ignoring the claim window, to show what would qualify.</p>
+    <p><b>Responsible use</b>: consistent with DORA and the Leiden Manifesto, journal-level metrics are not used to judge individual papers' quality beyond the stated bands, small numbers are noisy, recent years are provisional, and coverage of African and non-English venues in all bibliographic databases is incomplete — combine with expert judgement.</p>
+    <p><b>Coverage</b>: papers are found by OpenAlex institution links plus a text search of raw affiliations for “${esc(R.affText||"")}”. Web of Science and Journal Impact Factor data are proprietary and are only used when you paste lists into the rules.</p>
+  </div></details>`;
+  out.appendChild(mp);
+}
+
+/* ---------------- wiring ---------------- */
+function showTab(v){
+  document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x.dataset.v===v));
+  document.querySelectorAll(".view").forEach(el=>el.classList.toggle("on",el.id==="v-"+v));
+}
+function rerender(){ renderStaff(); renderScan(); renderAuthor(); renderJournal(); if(R){ renderIncent(); renderMgmt(); } }
+function legend(){ $("#legend").innerHTML=TIERS.map(t=>`<span style="--c:${t.c}">${esc(t.label)}</span>`).join(""); }
+function init(){
+  S.key=store.get("key")||""; $("#apiKey").value=S.key;
+  $("#apiKey").addEventListener("change",e=>{ S.key=e.target.value.trim(); store.set("key",S.key); updChips(); });
+  for(const id of ["tHigh","tSolid","tLow","tVol"]){ const v=store.get(id); if(v) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>{ store.set(id,e.target.value); rerender(); }); }
+  for(const id of ["y0","y1","wtype"]){ const v=store.get(id); if(v!==null) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>store.set(id,e.target.value)); }
+  loadWatchFromStore(); loadLevels(); watchChanged(); levelsChanged();
+  for(const [id,key] of [["#lvJufo","jufo"],["#lvNor","nor"]]) $(id).addEventListener("change",async e=>{
+    const f=e.target.files[0]; if(!f) return; const n=ingestLevels(await f.text(), key);
+    levelsChanged(n<0?`Couldn't find ISSN and level columns in ${f.name}.`:`Loaded ${n.toLocaleString()} ISSN levels from ${f.name} (${LV_NAME[key]}).`); e.target.value=""; });
+  $("#lvClear").onclick=()=>{ S.levels={jufo:new Map(),nor:new Map()}; levelsChanged("Level lists cleared."); };
+  if(!S.key && !watchSize()) $("#settings").open=true;
+  legend(); updChips();
+
+  document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.v));
+  autocomplete("#acStaffInst","institutions",picker("staffInst","#pickedStaffInst",true));
+  // incentive module
+  R=loadRules(); loadDecisions(); renderRulesEditor();
+  autocomplete("#acIncInst","institutions",p=>{ picker("incInst","#pickedIncInst",true)(p); R.institution={id:p.id,name:p.name}; saveRules(); });
+  $("#rsLoad").onclick=()=>{ R=PRESETS[$("#rsPreset").value](); saveRules(); renderRulesEditor(); if(incState) renderIncent(); };
+  $("#rsExport").onclick=()=>download(`rules_${slug(R.name)}.json`, JSON.stringify(R,null,2));
+  $("#rsImport").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return;
+    try{ const o=JSON.parse(await f.text()); if(!o.categories||!o.shares) throw 0; R=o; saveRules(); renderRulesEditor(); if(incState) renderIncent(); }
+    catch(_){ setStatus("That file isn't a valid rules JSON.","err"); } e.target.value=""; });
+  $("#btnIncent").onclick=()=>run(doIncent);
+  // management dashboard
+  { const y=new Date().getFullYear(); $("#mY0").value=store.get("mY0")||y-4; $("#mY1").value=store.get("mY1")||y; }
+  autocomplete("#acMgmtInst","institutions",p=>{ S.picked.mgmtInst=[p]; R.institution={id:p.id,name:p.name}; saveRules(); renderRulesEditor(); });
+  $("#btnMgmt").onclick=()=>run(doMgmt);
+  $("#fmClose").onclick=()=>$("#formModal").classList.add("hidden");
+  $("#fmPrint").onclick=()=>{ try{ window.print(); }catch(e){} };
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("#formModal").classList.add("hidden"); });
+  $("#btnStaff").onclick=()=>run(doStaff);
+  autocomplete("#acInst","institutions",picker("inst","#pickedInst",true));
+  autocomplete("#acAuthor","authors",picker("author","#pickedAuthor",true));
+  autocomplete("#acSource","sources",picker("source","#pickedSource",false));
+  $("#btnScan").onclick=()=>run(doScan);
+  $("#btnAuthor").onclick=()=>run(doAuthor);
+  $("#btnJournal").onclick=()=>run(doJournal);
+  $("#btnCancel").onclick=()=>{ S.cancel=true; };
+
+  $("#btnSPJ").onclick=()=>run(async()=>{
+    setStatus("Downloading Stop Predatory Journals lists from GitHub…");
+    let n=0;
+    // hijacked.csv is deliberately not loaded: it lists the *legitimate* titles that were cloned.
+    for(const [file,kind] of [["journals.csv","journal"],["publishers.csv","publisher"]]){
+      try{ const r=await fetch(SPJ+file); if(!r.ok) continue; n+=ingestTable(await r.text(), kind, "Stop Predatory Journals"); }
+      catch(e){ /* skip missing file */ }
+    }
+    if(!n) throw new Error("Couldn't download the list (offline, or the files moved). You can upload a CSV instead.");
+    watchChanged(`Added ${n.toLocaleString()} entries from Stop Predatory Journals.`);
+  });
+  $("#wlFile").addEventListener("change",async e=>{
+    const f=e.target.files[0]; if(!f) return; const text=await f.text();
+    const n = /\.(csv|tsv)$/i.test(f.name) ? ingestTable(text, /publisher/i.test(f.name)?"publisher":"journal", f.name) : ingestLines(text, f.name);
+    watchChanged(`Added ${n.toLocaleString()} entries from ${f.name}.`); e.target.value="";
+  });
+  $("#btnWlAdd").onclick=()=>{ const n=ingestLines($("#wlPaste").value,"pasted"); $("#wlPaste").value=""; watchChanged(`Added ${n} pasted entries.`); };
+  $("#btnWlClear").onclick=()=>{ S.watch={journals:new Map(),publishers:new Map(),issns:new Map()}; watchChanged("Watchlist cleared."); };
+}
+init();
+</script>
+</body>
+</html>
