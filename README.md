@@ -3,6 +3,8 @@
 
 **Publication quality, integrity and reward screening for universities.**
 
+**Live app:** https://muler-21.github.io/Research-Integrity-Compass-/ · **Author:** Mulusew Kassa Bitew ([ORCID 0000-0001-6223-0037](https://orcid.org/0000-0001-6223-0037)) · **Licence:** MIT · **Cite:** see [How to cite](#how-to-cite)
+
 RIC is a single-file web app for university research-management teams. It does five things:
 
 - collects all of an institution's publications
@@ -16,7 +18,7 @@ It uses the free [OpenAlex](https://openalex.org) API and runs entirely in the b
 ## Run it
 
 - **Locally:** open `index.html` in Chrome, Firefox or Edge.
-- **GitHub Pages:** put `index.html` in a repo, then go to Settings → Pages → Deploy from branch.
+- **Online:** use the live app link above (hosted on GitHub Pages). To host your own copy, fork this repository and turn on Settings → Pages → Deploy from branch.
 
 Optional: create a free OpenAlex account and paste your API key under **Settings**. A key gives you 10× the daily keyless budget. The key is stored only in your browser.
 
@@ -84,7 +86,7 @@ The rules (window, rates, caps, author shares, lists, how strict each check is) 
 - The use of an institutional email has to be checked on the PDF.
 - Very recent papers can take a few weeks to appear in OpenAlex.
 
-## Four modes
+## Other views
 
 | Tab | Input | Output |
 |---|---|---|
@@ -122,3 +124,53 @@ The hijacked-journals list is left out on purpose, because it names the legitima
 - These tiers are signals, not verdicts. Exact-title matching can hit the wrong journal, and authors in flagged journals may have been deceived.
 - OpenAlex author profiles sometimes merge or split people with similar names.
 - Check each case before acting on it, and don't publish named lists of researchers based on this tool alone.
+
+## How to cite
+
+If you use RIC in your work, please cite it. GitHub's **"Cite this repository"** button, which reads [`CITATION.cff`](CITATION.cff), gives these formats ready to copy.
+
+### APA
+
+> Bitew, M. K. (2026). *Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ* (Version 1.0.0) [Computer software]. GitHub. https://github.com/Muler-21/Research-Integrity-Compass-
+
+### BibTeX
+
+```bibtex
+@software{bitew_ric_2026,
+  author  = {Bitew, Mulusew Kassa},
+  title   = {Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ},
+  version = {1.0.0},
+  year    = {2026},
+  url     = {https://github.com/Muler-21/Research-Integrity-Compass-}
+}
+```
+
+<!-- After archiving a release on Zenodo, add: DOI badge and "https://doi.org/10.5281/zenodo.XXXXXXX" to the citations above. -->
+
+## References and data sources
+
+RIC builds on the following open data, standards and policies. Please acknowledge them as well.
+
+- **OpenAlex** (publication, author, journal and publisher data, CC0): Priem, J., Piwowar, H., & Orr, R. (2022). *OpenAlex: A fully-open index of scholarly works, authors, venues, institutions, and concepts.* arXiv:2205.01833. <https://openalex.org>
+- **Leiden Manifesto:** Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015). Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520, 429–431. <https://doi.org/10.1038/520429a>
+- **DORA:** San Francisco Declaration on Research Assessment (2012). <https://sfdora.org>
+- **CWTS Leiden Ranking:** the model for the indicator definitions (top-10% share, collaboration, open access). <https://www.leidenranking.com>
+- **Publication Forum (JUFO), Finland:** channel levels, used when you upload their export. <https://julkaisufoorumi.fi>
+- **Norwegian Register for Scientific Journals, Series and Publishers (HK-dir):** channel levels, used when you upload their export. <https://kanalregister.hkdir.no>
+- **Stop Predatory Journals** (MIT): the optional watchlist. <https://github.com/stop-predatory-journals/stop-predatory-journals.github.io>
+- **Debre Markos University**, Research, Publication, Ethics & Dissemination Directorate: the publication reward guideline (approved Hamle 16, 2014 E.C.) and the 2026/27 call letter (Ref. 048/1.1/19), used for the built-in rule-set example.
+
+## Author
+
+**Mulusew Kassa Bitew**, Postdoctoral Research Fellow, University of Molise, Italy.
+ORCID: [0000-0001-6223-0037](https://orcid.org/0000-0001-6223-0037) · GitHub: [@Muler-21](https://github.com/Muler-21)
+
+Feedback, bug reports and new institutional rule sets are welcome through [GitHub Issues](https://github.com/Muler-21/Research-Integrity-Compass-/issues).
+
+## AI-assistance statement
+
+RIC was developed with AI assistance (Claude, Anthropic). The concept, requirements, institutional rules and validation are by the author. The code was generated and tested iteratively under the author's direction.
+
+## Licence
+
+Released under the [MIT License](LICENSE) © 2026 Mulusew Kassa Bitew. Data retrieved through the app remains under its providers' terms: OpenAlex data is CC0; JUFO and Norwegian Register lists are subject to their own terms of use.

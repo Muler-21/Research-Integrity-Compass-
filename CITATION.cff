@@ -1,0 +1,62 @@
+cff-version: 1.2.0
+message: "If you use Research Integrity Compass (RIC) in your work, please cite it as below."
+title: "Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ"
+abstract: >-
+  A browser-based tool for university research management that collects an
+  institution's publications from OpenAlex, rates them with international
+  research-assessment indicators (field-normalised citation impact, top-10%
+  papers, collaboration, open access, Nordic channel levels, integrity checks),
+  applies the institution's own publication-reward rules, and ranks publishers
+  and journals under both views.
+type: software
+authors:
+  - family-names: Bitew
+    given-names: Mulusew Kassa
+    orcid: "https://orcid.org/0000-0001-6223-0037"
+    affiliation: "University of Molise"
+version: 1.0.0
+license: MIT
+date-released: "2026-11-06"
+repository-code: "https://github.com/Muler-21/Research-Integrity-Compass-"
+url: "https://muler-21.github.io/Research-Integrity-Compass-/"
+keywords:
+  - research integrity
+  - bibliometrics
+  - predatory journals
+  - research assessment
+  - publication incentives
+  - OpenAlex
+  - Ethiopia
+references:
+  - type: article
+    title: "OpenAlex: A fully-open index of scholarly works, authors, venues, institutions, and concepts"
+    authors:
+      - family-names: Priem
+        given-names: Jason
+      - family-names: Piwowar
+        given-names: Heather
+      - family-names: Orr
+        given-names: Richard
+    year: 2022
+    identifiers:
+      - type: other
+        value: "arXiv:2205.01833"
+  - type: article
+    title: "Bibliometrics: The Leiden Manifesto for research metrics"
+    authors:
+      - family-names: Hicks
+        given-names: Diana
+      - family-names: Wouters
+        given-names: Paul
+      - family-names: Waltman
+        given-names: Ludo
+      - family-names: de Rijcke
+        given-names: Sarah
+      - family-names: Rafols
+        given-names: Ismael
+    journal: Nature
+    volume: 520
+    start: 429
+    end: 431
+    year: 2015
+    doi: 10.1038/520429a
