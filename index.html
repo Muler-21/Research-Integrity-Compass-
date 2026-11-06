@@ -272,6 +272,7 @@ footer.site .am{color:#C5CFDF}
         <button class="cta-alt" data-go="incentive" data-pt="policy">Screen reward claims</button>
       </div>
       <ul class="trust">
+        <li>Free for everyone, with no sign-up</li>
         <li>Data from OpenAlex, the open catalogue of the world's research</li>
         <li>Indicators follow DORA and the Leiden Manifesto</li>
         <li>Journal levels from Finland's JUFO and Norway's register</li>
@@ -304,7 +305,7 @@ footer.site .am{color:#C5CFDF}
 <main>
   <ol class="steps" aria-label="How RIC works">
     <li><b>Choose an institution</b>Type its name in the dashboard. RIC finds every paper carrying its affiliation, including papers found only through the address text.</li>
-    <li><b>Add your key and lists</b>In Setup: your free OpenAlex API key, then optionally a predatory-journal watchlist, JUFO or Norwegian journal levels, and your national accredited list.</li>
+    <li><b>Add reference lists</b>Optional, in Setup: a predatory-journal watchlist, JUFO or Norwegian journal levels, and your national accredited list. No account or key is needed.</li>
     <li><b>Act on the results</b>Indicators, publisher rankings, an integrity risk register and printable verification forms, all downloadable as CSV.</li>
   </ol>
   <div class="panel">
@@ -315,9 +316,9 @@ footer.site .am{color:#C5CFDF}
           <h3>OpenAlex access</h3>
           <div class="row">
             <label class="f" style="flex:1">Free API key (from openalex.org/settings/api)
-              <input id="apiKey" type="password" placeholder="Paste your free OpenAlex API key" autocomplete="off"></label>
+              <input id="apiKey" type="password" placeholder="Optional: paste a free OpenAlex API key" autocomplete="off"></label>
           </div>
-          <p class="small muted">Needed for complete results: without a key OpenAlex returns only the first page of each search. Get one free in a minute at <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a> (sign in, then copy the key). It is saved only in this browser.</p>
+          <p class="small muted">Optional. RIC works without a key: OpenAlex gives every visitor a small free daily allowance and up to 10,000 results per search. Heavy users can add a free key from <a href="https://openalex.org/settings/api" target="_blank" rel="noopener">openalex.org/settings/api</a> for ten times the allowance and no 10,000 limit. A key is saved only in this browser.</p>
           <h3>Filters applied to every search</h3>
           <div class="row">
             <label class="f">From year<input id="y0" type="number" min="1900" max="2100" placeholder="any" style="width:100px"></label>
@@ -547,7 +548,7 @@ async function oa(path, params={}){
     S.calls++;
     if(r.status===429){
       if(attempt<3){ await sleep(wait); wait*=2; continue; }
-      throw new ApiError("OpenAlex rate limit / daily budget reached. Add a free API key in Settings, or try again tomorrow.",429);
+      { const err=new ApiError(S.key ? "Your OpenAlex key's free daily allowance is used up. Try again tomorrow (it resets at midnight UTC)." : "Today's free OpenAlex allowance for this connection is used up. Try again tomorrow, or add a free OpenAlex key in Setup for ten times more.",429); err.needsKey=!S.key; throw err; }
     }
     if(!r.ok){
       let msg = r.statusText;
@@ -572,17 +573,21 @@ function chunk(a,n){ const o=[]; for(let i=0;i<a.length;i+=n) o.push(a.slice(i,i
 /* group works by a field, paging with cursor where supported */
 /* Cursor-paged group_by pages may not come back in count order, so we collect
    up to a cap, then sort by count and keep the top `maxGroups`. */
+/* Paging: with an API key we use cursor paging (no limit). Without a key OpenAlex
+   refuses cursors but still serves numbered pages for the first 10,000 results,
+   so RIC works for everyone with no sign-up. */
+const BASIC_LIMIT = 10000;
 async function groupBy(filter, field, maxGroups, extra={}){
-  const out=[]; let cursor="*", total=null, groupsCount=null, usePaging=true, exhausted=false;
+  const out=[]; let cursor="*", page=1, total=null, groupsCount=null, usePaging=true, exhausted=false;
   const cap=Math.min(10000, Math.max(maxGroups*5, 1000));
   while(true){
     const params = {filter, group_by:field, per_page:200, ...extra};
-    if(usePaging) params.cursor = cursor;
+    if(usePaging){ if(S.key) params.cursor = cursor; else params.page = page; }
     let j;
     try{ j = await oa("/works", params); }
     catch(e){
       if(usePaging && e.status===400 && out.length===0){ usePaging=false; continue; }
-      if(e.needsKey && !S.key && out.length){ S.partial=true; break; }
+      if(out.length && !S.key && (e.needsKey || e.status===400)){ S.partial=S.partial||"key"; break; }
       throw e;
     }
     if(total===null){ total = j.meta?.count ?? null; groupsCount = j.meta?.groups_count ?? null; }
@@ -593,9 +598,16 @@ async function groupBy(filter, field, maxGroups, extra={}){
     }
     const next = j.meta?.next_cursor;
     if(!usePaging){ exhausted = groupsCount!=null ? out.length>=groupsCount : groups.length<200; break; }
-    if(!next || !groups.length){ exhausted=true; break; }
-    if(out.length>=cap) break;
-    cursor = next;
+    if(!S.key){
+      const eff=+j.meta?.per_page||200;
+      if(!groups.length || groups.length<eff || (groupsCount!=null && out.length>=groupsCount)){ exhausted=true; break; }
+      if(out.length>=cap) break;
+      page++; if(page*eff>BASIC_LIMIT){ S.partial=S.partial||"cap"; break; }
+    } else {
+      if(!next || !groups.length){ exhausted=true; break; }
+      if(out.length>=cap) break;
+      cursor = next;
+    }
     setStatus(`Collected ${out.length.toLocaleString()} groups${groupsCount?` of ${groupsCount.toLocaleString()}`:""}…`);
   }
   out.sort((a,b)=>b.count-a.count);
@@ -811,7 +823,7 @@ function setStatus(t, kind, keyAction){
   $("#btnAddKey").classList.toggle("hidden",!keyAction);
   $("#statusText").textContent=t;
 }
-function keyNote(){ const n=$("#keyNote"); if(n) n.classList.toggle("hidden", !!S.key); }
+function keyNote(){ const n=$("#keyNote"); if(n) n.classList.add("hidden"); }
 function openKeySetup(){
   const d=$("#settings"); d.open=true; d.scrollIntoView({behavior:"smooth",block:"start"});
   setTimeout(()=>$("#apiKey").focus({preventScroll:true}),400);
@@ -823,7 +835,8 @@ async function run(fn){
   S.partial=false;
   try{
     await fn();
-    if(S.partial) setStatus("These results are incomplete: without an API key OpenAlex only returns the first page of each search. Add your free key in Setup, then run again for complete results.","warn",true);
+    if(S.partial==="cap") setStatus("Showing the first 10,000 results, the most OpenAlex returns per search without a key. Narrow the years, or add a free OpenAlex key in Setup to get everything.","warn",true);
+    else if(S.partial) setStatus("These results are incomplete: OpenAlex stopped returning further pages without a key. Add a free OpenAlex key in Setup, then run again.","warn",true);
     else clearStatus();
   }
   catch(e){ console.error(e); setStatus(e.message||String(e),"err",!!e.needsKey); }
@@ -1128,15 +1141,21 @@ function tierSig(){ const t=T(); return [watchSize(), t.high, t.solid, t.low, t.
 async function listStaff(inst, who, minWorks, max){
   const f=[ who==="any" ? `affiliations.institution.id:${inst.id}` : `last_known_institutions.id:${inst.id}` ];
   if(minWorks>1) f.push(`works_count:>${minWorks-1}`);
-  const out=[]; let cursor="*", total=null;
+  const out=[]; let cursor="*", page=1, total=null;
   while(out.length<max){
+    const params={filter:f.join(","), per_page:100};
+    if(S.key) params.cursor=cursor; else params.page=page;
     let j;
-    try{ j=await oa("/authors",{filter:f.join(","), per_page:100, cursor, sort:undefined}); }
-    catch(e){ if(e.needsKey && !S.key && out.length){ S.partial=true; break; } throw e; }
+    try{ j=await oa("/authors",params); }
+    catch(e){ if(e.needsKey && out.length){ S.partial=S.partial||"key"; break; } throw e; }
     if(total===null) total=j.meta?.count??null;
-    for(const a of j.results||[]){ S.authors.set(sid(a.id),a); out.push(sid(a.id)); }
+    const res=j.results||[];
+    for(const a of res){ S.authors.set(sid(a.id),a); out.push(sid(a.id)); }
     setStatus(`Listing staff: ${out.length.toLocaleString()}${total!=null?` of ${total.toLocaleString()}`:""}…`);
-    cursor=j.meta?.next_cursor; if(!cursor || !(j.results||[]).length) break;
+    const eff=+j.meta?.per_page||100;
+    if(!res.length || (total!=null ? out.length>=total : res.length<eff)) break;
+    if(S.key){ cursor=j.meta?.next_cursor; if(!cursor) break; }
+    else { page++; if(page*eff>BASIC_LIMIT){ S.partial=S.partial||"cap"; break; } }
   }
   return {ids:out.slice(0,max), total};
 }
@@ -1486,15 +1505,24 @@ function computePayments(claims){
 
 /* --- fetching --- */
 async function fetchWorks(filter, cap=6000){
-  const out=[]; let cursor="*", select="id,doi,display_name,title,publication_date,publication_year,type,primary_location,authorships,biblio,cited_by_count,is_retracted,indexed_in,ids,fwci,citation_normalized_percentile,open_access,primary_topic,countries_distinct_count,institutions_distinct_count,corresponding_institution_ids";
+  const out=[]; let cursor="*", page=1, per=200, total=null, select="id,doi,display_name,title,publication_date,publication_year,type,primary_location,authorships,biblio,cited_by_count,is_retracted,indexed_in,ids,fwci,citation_normalized_percentile,open_access,primary_topic,countries_distinct_count,institutions_distinct_count,corresponding_institution_ids";
   while(out.length<cap){
+    const params={filter, per_page:per, select};
+    if(S.key) params.cursor=cursor; else params.page=page;
     let j;
-    try{ j=await oa("/works",{filter, per_page:200, cursor, select}); }
-    catch(e){ if(select && e.status===400 && !out.length){ select=undefined; continue; }
-              if(e.needsKey && !S.key && out.length){ S.partial=true; break; } throw e; }
-    out.push(...(j.results||[]));
-    setStatus(`Fetching papers: ${out.length.toLocaleString()}${j.meta?.count!=null?` of ${j.meta.count.toLocaleString()}`:""}…`);
-    cursor=j.meta?.next_cursor; if(!cursor || !(j.results||[]).length) break;
+    try{ j=await oa("/works",params); }
+    catch(e){
+      if(select && e.status===400 && !out.length){ select=undefined; continue; }
+      if(e.status===400 && !out.length && per>100){ per=100; continue; }
+      if(e.needsKey && out.length){ S.partial=S.partial||"key"; break; }
+      throw e;
+    }
+    const res=j.results||[]; out.push(...res); if(total===null) total=j.meta?.count??null;
+    const eff=+j.meta?.per_page||per; if(eff<per) per=eff;      // OpenAlex may cap page size
+    setStatus(`Fetching papers: ${out.length.toLocaleString()}${total!=null?` of ${total.toLocaleString()}`:""}…`);
+    if(!res.length || (total!=null ? out.length>=total : res.length<eff)) break;
+    if(S.key){ cursor=j.meta?.next_cursor; if(!cursor) break; }
+    else { page++; if(page*per>BASIC_LIMIT){ if(out.length<cap) S.partial=S.partial||"cap"; break; } }
   }
   return out;
 }

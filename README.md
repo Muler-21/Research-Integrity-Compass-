@@ -20,7 +20,7 @@ It uses the free [OpenAlex](https://openalex.org) API and runs entirely in the b
 - **Locally:** open `index.html` in Chrome, Firefox or Edge.
 - **Online:** use the live app link above (hosted on GitHub Pages). To host your own copy, fork this repository and turn on Settings → Pages → Deploy from branch.
 
-Optional: create a free OpenAlex account and paste your API key under **Settings**. A key gives you 10× the daily keyless budget. The key is stored only in your browser.
+**No account or API key is needed.** OpenAlex gives every visitor a small free daily allowance and up to 10,000 results per search, which covers a typical university dashboard. Heavy users can paste a free OpenAlex API key into **Setup** for ten times the allowance and no 10,000 limit. The key is stored only in that user's browser.
 
 ## Management dashboard (start here)
 
