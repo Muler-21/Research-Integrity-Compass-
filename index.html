@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta name="description" content="Research Integrity Compass (RIC) — publication quality, integrity and reward screening for universities, built on OpenAlex.">
 <title>Research Integrity Compass (RIC) · የምርምር ታማኝነት ኮምፓስ</title>
 <style>
@@ -146,21 +148,165 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
   #formModal .fm-bar{display:none}
   .form{border-radius:0;padding:0;margin:0;page-break-after:always}
 }
+
+/* ================= RIC visual identity ================= */
+:root{
+  --ink-deep:#14213D; --paper:#F4F6F3; --brass:#C9A043; --brass-hi:#DDB960; --teal:#1F5F6B;
+  --bg:var(--paper); --panel:#FFFFFF; --ink:#18233A; --muted:#55627A; --line:#DCE2E8; --accent:var(--teal); --accent-ink:#FFFFFF;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-eth:"Noto Sans Ethiopic","Nyala","Abyssinica SIL",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0E1626;--panel:#16213A;--ink:#E8EDF4;--muted:#9DA9BC;--line:#28344F;--accent:#63B3BD;--accent-ink:#0E1626}
+}
+body{font-family:var(--f-body);font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.am{font-family:var(--f-eth)}
+.panel h2,.big,.card .big{font-family:var(--f-display);letter-spacing:-.01em}
+.panel{border-radius:14px;padding:20px 22px}
+.panel h2{font-size:19px;font-weight:700;margin-bottom:6px}
+.panel h3{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);font-weight:700;margin:18px 0 6px}
+button,.btn{border-radius:9px}
+button.primary{padding:9px 18px}
+:focus-visible{outline:2.5px solid var(--brass);outline-offset:2px}
+a{color:var(--accent)}
+.skip{position:absolute;left:-999px;top:8px;background:var(--brass);color:var(--ink-deep);padding:8px 14px;border-radius:8px;z-index:200;font-weight:700}
+.skip:focus{left:12px}
+
+/* header */
+header{padding:10px 28px;gap:14px;background:color-mix(in srgb,var(--panel) 90%,transparent);backdrop-filter:saturate(1.3) blur(10px)}
+.brand{display:flex;align-items:center;gap:11px;color:var(--ink);text-decoration:none}
+.brand:hover{text-decoration:none}
+.brand svg{width:32px;height:32px;flex:none}
+.brand b{font-family:var(--f-display);font-size:17px;font-weight:700;letter-spacing:-.01em}
+.brand .am{font-size:13.5px;color:var(--muted);margin-left:2px}
+@media (max-width:900px){ header .chip{display:none} .brand .am{display:none} }
+
+/* hero */
+.hero{background-color:var(--ink-deep);color:#EEF2F7;
+  background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:46px 46px;background-position:-1px -1px}
+.hero-in{max-width:1240px;margin:0 auto;padding:52px 28px 50px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:48px;align-items:center}
+.hero-name{font-family:var(--f-display);font-weight:600;color:var(--brass-hi);font-size:15.5px;margin:0 0 16px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.hero-name .am{color:#C5CFDF;font-weight:500}
+.hero h1{font-family:var(--f-display);font-size:clamp(31px,4.3vw,52px);line-height:1.05;letter-spacing:-.025em;font-weight:750;margin:0 0 18px;max-width:20ch}
+.lede{font-size:17.5px;line-height:1.6;color:#C5CFDF;max-width:58ch;margin:0 0 28px}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px}
+.cta-main{background:var(--brass);color:var(--ink-deep);border:none;font-weight:700;padding:13px 22px;font-size:15.5px;border-radius:10px}
+.cta-main:hover{background:var(--brass-hi)}
+.cta-alt{background:transparent;color:#EEF2F7;border:1.5px solid rgba(238,242,247,.38);padding:12px 20px;font-weight:600;font-size:15.5px;border-radius:10px}
+.cta-alt:hover{border-color:#EEF2F7}
+.trust{list-style:none;padding:0;margin:30px 0 0;display:flex;flex-wrap:wrap;gap:8px 24px;font-size:13.5px;color:#AFBACD}
+.trust li::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brass);margin-right:9px;vertical-align:2px}
+.compass{margin:0}
+.compass svg{width:100%;max-width:470px;height:auto;display:block;margin:0 auto;overflow:visible}
+.compass .cl{fill:#AFBACD;font-family:var(--f-display);font-weight:600;font-size:17px;transition:fill .4s}
+.compass .ca{fill:#8C98AE;font-family:var(--f-eth);font-size:15px;transition:fill .4s}
+.compass .on .cl{fill:var(--brass-hi)} .compass .on .ca{fill:#E8D7A8}
+#needle{transform-origin:200px 200px;transform-box:view-box;transform:rotate(24deg);transition:transform 1s cubic-bezier(.34,1.42,.64,1)}
+@media (prefers-reduced-motion:no-preference){ #needle.settle{animation:settle 1.9s cubic-bezier(.2,.9,.3,1) both} }
+@media (prefers-reduced-motion:reduce){ #needle{transition:none} }
+@keyframes settle{0%{transform:rotate(-160deg)}55%{transform:rotate(52deg)}75%{transform:rotate(14deg)}90%{transform:rotate(28deg)}100%{transform:rotate(24deg)}}
+@media (max-width:860px){ .hero-in{grid-template-columns:1fr;padding:30px 20px 36px;gap:18px} .compass{max-width:330px;width:100%;margin:0 auto;order:-1} }
+
+/* steps (a real sequence) */
+.steps{list-style:none;counter-reset:st;display:grid;grid-template-columns:repeat(3,1fr);margin:0 0 22px;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+.steps li{counter-increment:st;position:relative;padding:18px 20px 18px 62px;font-size:14.5px;color:var(--muted);line-height:1.5}
+.steps li+li{border-left:1px solid var(--line)}
+.steps li::before{content:counter(st);position:absolute;left:20px;top:17px;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--accent);color:var(--accent);font-family:var(--f-display);font-weight:700;font-size:14px;display:grid;place-items:center}
+.steps b{display:block;color:var(--ink);font-family:var(--f-display);font-size:16px;font-weight:700;margin-bottom:3px}
+@media (max-width:860px){ .steps{grid-template-columns:1fr} .steps li+li{border-left:none;border-top:1px solid var(--line)} }
+
+/* setup */
+details.settings > summary{font-family:var(--f-display);font-size:17px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+details.settings > summary .setup-hint{font-family:var(--f-body);font-weight:400;font-size:13.5px;color:var(--muted)}
+
+/* tabs */
+.tabs{gap:2px;margin-bottom:0;scroll-margin-top:70px}
+.tabs button{display:inline-flex;align-items:center;gap:8px;padding:12px 14px;font-weight:600;font-size:14.5px;color:var(--muted)}
+.tabs button svg{width:17px;height:17px;flex:none}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom:2.5px solid var(--accent)}
+.tabs button:hover{color:var(--ink)}
+.tabdesc{margin:10px 0 16px;color:var(--muted);font-size:14.5px}
+
+/* empty states */
+.empty{display:flex;gap:16px;align-items:center;padding:24px;border:1.5px dashed var(--line);border-radius:14px;color:var(--muted);font-size:14.5px}
+.empty svg{width:42px;height:42px;flex:none;color:var(--accent)}
+.empty b{display:block;color:var(--ink);font-family:var(--f-display);font-size:16px;margin-bottom:2px}
+
+/* footer */
+footer.site{max-width:none;margin:48px 0 0;padding:0;background:var(--ink-deep);color:#C5CFDF;font-size:13.5px}
+footer.site .f-in{max-width:1240px;margin:0 auto;padding:38px 28px 26px;display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:34px;line-height:1.6}
+footer.site h2{font-family:var(--f-display);color:#FFFFFF;font-size:15.5px;margin:0 0 8px}
+footer.site p{margin:0 0 8px}
+footer.site a{color:var(--brass-hi)}
+footer.site .f-base{max-width:1240px;margin:0 auto;padding:14px 28px 26px;border-top:1px solid rgba(255,255,255,.12);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;font-size:12.5px;color:#93A0B6}
+footer.site .am{color:#C5CFDF}
+@media (max-width:860px){ footer.site .f-in{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
+<a class="skip" href="#tools">Skip to the tools</a>
 <header>
-  <h1>Research Integrity Compass (RIC) <span class="am">የምርምር ታማኝነት ኮምፓስ</span><small>publication quality, integrity and reward screening for universities</small></h1>
+  <a class="brand" href="#top" aria-label="Research Integrity Compass, home">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="#14213D"/><circle cx="32" cy="32" r="24" fill="none" stroke="#C9A043" stroke-width="2"/><path d="M32 9 L37 32 L27 32 Z" fill="#C9A043"/><path d="M32 55 L37 32 L27 32 Z" fill="#8FA0BD"/><circle cx="32" cy="32" r="3.5" fill="#F4F6F3"/></svg>
+    <b>Research Integrity Compass</b><span class="am">የምርምር ታማኝነት ኮምፓስ</span>
+  </a>
   <span class="spacer"></span>
   <span class="chip" id="chipWatch">Watchlist: <b>0</b></span>
   <span class="chip" id="chipKey">API key: <b>none</b></span>
   <span class="chip" id="chipSpend" title="Sum of meta.cost_usd reported by OpenAlex this session">OpenAlex spend: <b>$0.0000</b> · <b>0</b> calls</span>
 </header>
 
+<section class="hero" id="top">
+  <div class="hero-in">
+    <div>
+      <p class="hero-name"><span>Research Integrity Compass (RIC)</span><span class="am">የምርምር ታማኝነት ኮምፓስ</span></p>
+      <h1>See every paper your university publishes, measured against international standards and your own rules.</h1>
+      <p class="lede">RIC gathers your institution's publications from OpenAlex, checks every journal for quality and integrity, ranks publishers, and screens publication-reward claims. It runs in your browser and is free to use.</p>
+      <div class="hero-cta">
+        <button class="cta-main" data-go="mgmt" data-pt="impact">Build a university dashboard</button>
+        <button class="cta-alt" data-go="incentive" data-pt="policy">Screen reward claims</button>
+      </div>
+      <ul class="trust">
+        <li>Data from OpenAlex, the open catalogue of the world's research</li>
+        <li>Indicators follow DORA and the Leiden Manifesto</li>
+        <li>Journal levels from Finland's JUFO and Norway's register</li>
+      </ul>
+    </div>
+    <figure class="compass" aria-hidden="true">
+      <svg viewBox="-78 -4 556 414" id="compassSvg">
+        <circle cx="200" cy="200" r="165" fill="none" stroke="#C9A043" stroke-width="2"/>
+        <circle cx="200" cy="200" r="128" fill="rgba(255,255,255,.03)" stroke="rgba(238,242,247,.16)" stroke-width="1"/>
+        <circle cx="200" cy="200" r="78" fill="none" stroke="rgba(238,242,247,.10)" stroke-width="1"/>
+        <g id="ticks"></g>
+        <g opacity=".22" fill="#EEF2F7">
+          <path d="M200 84 L210 190 L200 200 L190 190 Z"/><path d="M316 200 L210 210 L200 200 L210 190 Z"/>
+          <path d="M200 316 L190 210 L200 200 L210 210 Z"/><path d="M84 200 L190 190 L200 200 L190 210 Z"/>
+        </g>
+        <g class="pt" data-pt="impact"><text class="cl" x="200" y="12" text-anchor="middle">Impact</text><text class="ca" x="200" y="29" text-anchor="middle">ተፅዕኖ</text></g>
+        <g class="pt" data-pt="standards"><text class="cl" x="378" y="198" text-anchor="start">Standards</text><text class="ca" x="378" y="216" text-anchor="start">ደረጃ</text></g>
+        <g class="pt" data-pt="integrity"><text class="cl" x="200" y="390" text-anchor="middle">Integrity</text><text class="ca" x="200" y="407" text-anchor="middle">ታማኝነት</text></g>
+        <g class="pt" data-pt="policy"><text class="cl" x="22" y="198" text-anchor="end">Policy</text><text class="ca" x="22" y="216" text-anchor="end">ፖሊሲ</text></g>
+        <g id="needle" class="settle">
+          <path d="M200 76 L213 200 L187 200 Z" fill="#C9A043"/><path d="M200 76 L200 200 L187 200 Z" fill="#DDB960"/>
+          <path d="M200 324 L213 200 L187 200 Z" fill="#5E6E8C"/><path d="M200 324 L200 200 L213 200 Z" fill="#8494B1"/>
+          <circle cx="200" cy="200" r="12" fill="#C9A043"/><circle cx="200" cy="200" r="4.5" fill="#14213D"/>
+        </g>
+      </svg>
+    </figure>
+  </div>
+</section>
+
 <main>
+  <ol class="steps" aria-label="How RIC works">
+    <li><b>Choose an institution</b>Type its name in the dashboard. RIC finds every paper carrying its affiliation, including papers found only through the address text.</li>
+    <li><b>Add reference lists</b>Optional, in Setup: a predatory-journal watchlist, JUFO or Norwegian journal levels, and your national accredited list.</li>
+    <li><b>Act on the results</b>Indicators, publisher rankings, an integrity risk register and printable verification forms, all downloadable as CSV.</li>
+  </ol>
   <div class="panel">
     <details class="settings" id="settings">
-      <summary>Settings, data sources and watchlist</summary>
+      <summary>Setup <span class="setup-hint">OpenAlex key, predatory-journal watchlist and journal levels</span></summary>
       <div class="grid2" style="margin-top:12px">
         <div>
           <h3>OpenAlex access</h3>
@@ -208,22 +354,23 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
     </details>
   </div>
 
-  <div class="tabs" role="tablist">
-    <button role="tab" aria-selected="true" data-v="mgmt">Management dashboard</button>
-    <button role="tab" aria-selected="false" data-v="staff">Organization staff</button>
-    <button role="tab" aria-selected="false" data-v="incentive">Incentive screening</button>
-    <button role="tab" aria-selected="false" data-v="scan">Tier scan</button>
-    <button role="tab" aria-selected="false" data-v="author">Researcher → journals</button>
-    <button role="tab" aria-selected="false" data-v="journal">Journals → researchers</button>
+  <div class="tabs" role="tablist" id="tools">
+    <button role="tab" aria-selected="true" data-v="mgmt" data-desc="Every paper of one institution, rated on international indicators, with publisher rankings and an integrity risk register."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>Dashboard</button>
+    <button role="tab" aria-selected="false" data-v="incentive" data-desc="Check reward claims against your institution's rules, work out each author's payment and print verification forms."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 9.5l2 2 4-4"/><path d="M9 15h6"/></svg>Reward screening</button>
+    <button role="tab" aria-selected="false" data-v="staff" data-desc="Everyone at an organization, with each person's papers counted by journal tier."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.6c3 .2 5 2.2 5 5.4"/></svg>Staff</button>
+    <button role="tab" aria-selected="false" data-v="scan" data-desc="Journal tiers for an institution, a country or a research field, and the researchers behind each tier."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>Tier scan</button>
+    <button role="tab" aria-selected="false" data-v="author" data-desc="Where one researcher publishes, grouped by journal tier."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 21c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>Researcher</button>
+    <button role="tab" aria-selected="false" data-v="journal" data-desc="Who publishes in one or more journals, and who appears in several of them."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>Journals</button>
   </div>
+  <p class="tabdesc" id="tabDesc">Every paper of one institution, rated on international indicators, with publisher rankings and an integrity risk register.</p>
 
   <div class="status" id="status"><div class="spin" id="spin"></div><span id="statusText"></span><span class="spacer"></span><button class="small" id="btnCancel">Stop</button></div>
 
   <!-- MANAGEMENT -->
   <section class="view on" id="v-mgmt">
     <div class="panel">
-      <h2>University publication dashboard</h2>
-      <p class="small muted" style="margin-top:0">Pulls every publication carrying the institution's affiliation, rates it with international research-assessment indicators (field-normalised citation impact, top-10% papers, collaboration, open access, venue indexing, integrity), and applies the institution's own reward rules from the <b>Publication incentive</b> tab.</p>
+      <h2>University dashboard</h2>
+      <p class="small muted" style="margin-top:0">Every paper carrying your institution's affiliation, rated on international indicators (citation impact, top-10% papers, collaboration, open access, journal level, integrity) and checked against the reward rules you set in <b>Reward screening</b>.</p>
       <div class="row">
         <div class="ac" id="acMgmtInst"><label class="f">Institution<input placeholder="e.g. Debre Markos University"></label></div>
         <label class="f">From year<input id="mY0" type="number" style="width:100px"></label>
@@ -233,14 +380,14 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
       </div>
       <div class="picked" id="pickedMgmtInst"></div>
     </div>
-    <div id="mgmtOut"></div>
+    <div id="mgmtOut"><div class="empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><path d="M24 40l4-16h-8z" opacity=".35" fill="currentColor" stroke="none"/></svg><div><b>No dashboard yet</b>Choose an institution and a range of years above, then select Build dashboard. A university of a few thousand papers takes under a minute.</div></div></div>
   </section>
 
   <!-- STAFF -->
   <section class="view" id="v-staff">
     <div class="panel">
-      <h2>Everyone at an organization, and where each person publishes</h2>
-      <p class="small muted" style="margin-top:0">Lists the organization's researchers, then counts each person's papers (published with this affiliation, in your year range) by journal tier.</p>
+      <h2>Staff and where they publish</h2>
+      <p class="small muted" style="margin-top:0">Lists the organization's researchers and counts each person's papers, under this affiliation and in your year range, by journal tier.</p>
       <div class="row">
         <div class="ac" id="acStaffInst"><label class="f">Organization<input placeholder="e.g. University of Molise, ILRI, Wageningen University"></label></div>
         <label class="f">Who counts as staff<select id="staffWho"><option value="current">Current (latest affiliation)</option><option value="any">Current + former</option></select></label>
@@ -250,14 +397,14 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
       </div>
       <div class="picked" id="pickedStaffInst"></div>
     </div>
-    <div id="staffOut"></div>
+    <div id="staffOut"><div class="empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><path d="M24 40l4-16h-8z" opacity=".35" fill="currentColor" stroke="none"/></svg><div><b>No staff list yet</b>Choose an organization above, then select Find staff.</div></div></div>
   </section>
 
   <!-- INCENTIVE -->
   <section class="view" id="v-incentive">
     <div class="panel">
-      <h2>Publication incentive screening</h2>
-      <p class="small muted" style="margin-top:0">Finds every paper published with the institution's affiliation in the claim window, checks it against the reward rules (indexing, journal integrity, retraction, affiliation, duplicate claims), computes each author's payment, and produces a pre-filled verification form. Start from a preset and adjust — rules can be exported and shared.</p>
+      <h2>Reward claim screening</h2>
+      <p class="small muted" style="margin-top:0">Checks the papers published in a claim window against your institution's reward rules (indexing, journal integrity, retraction, affiliation, duplicate claims), works out each author's payment and prints a verification form per paper. Start from the Debre Markos University preset or build your own; rules can be exported and shared.</p>
       <div class="row">
         <label class="f">Rule set<select id="rsPreset"><option value="dmu">Debre Markos University — 2026/27 call</option><option value="blank">Blank template</option></select></label>
         <button id="rsLoad">Load preset</button>
@@ -270,15 +417,15 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
       </div>
       <div class="picked" id="pickedIncInst"></div>
       <div id="rsEditor"></div>
-      <div class="row" style="margin-top:14px"><button class="primary" id="btnIncent">Screen publications</button><span class="small muted" id="rsSaved"></span></div>
+      <div class="row" style="margin-top:14px"><button class="primary" id="btnIncent">Screen claims</button><span class="small muted" id="rsSaved"></span></div>
     </div>
-    <div id="incOut"></div>
+    <div id="incOut"><div class="empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><path d="M24 40l4-16h-8z" opacity=".35" fill="currentColor" stroke="none"/></svg><div><b>No claims screened yet</b>Check the rules above, choose the institution, then select Screen claims.</div></div></div>
   </section>
 
   <!-- SCAN -->
   <section class="view" id="v-scan">
     <div class="panel">
-      <h2>Which journals does a community publish in — and who publishes in each tier?</h2>
+      <h2>Journal tiers for an institution, country or field</h2>
       <p class="small muted" style="margin-top:0">Set any combination; all are combined with AND. Example: institution = your university, years 2020–2026.</p>
       <div class="row">
         <div class="ac" id="acInst"><label class="f">Institution<input placeholder="e.g. University of Molise"></label></div>
@@ -289,20 +436,20 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
       </div>
       <div class="picked" id="pickedInst"></div>
     </div>
-    <div id="scanOut"></div>
+    <div id="scanOut"><div class="empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><path d="M24 40l4-16h-8z" opacity=".35" fill="currentColor" stroke="none"/></svg><div><b>No scan yet</b>Set an institution, a country or a keyword above, then select Scan.</div></div></div>
   </section>
 
   <!-- AUTHOR -->
   <section class="view" id="v-author">
     <div class="panel">
-      <h2>Where does a researcher publish?</h2>
+      <h2>One researcher's journals</h2>
       <div class="row">
         <div class="ac" id="acAuthor"><label class="f">Researcher (name or ORCID)<input placeholder="e.g. Jane Doe"></label></div>
         <button class="primary" id="btnAuthor">Profile</button>
       </div>
       <div class="picked" id="pickedAuthor"></div>
     </div>
-    <div id="authorOut"></div>
+    <div id="authorOut"><div class="empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><path d="M24 40l4-16h-8z" opacity=".35" fill="currentColor" stroke="none"/></svg><div><b>No researcher selected</b>Type a name or ORCID above, pick the right person from the suggestions, then select Profile.</div></div></div>
   </section>
 
   <!-- JOURNAL -->
@@ -317,7 +464,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
       </div>
       <div class="picked" id="pickedSource"></div>
     </div>
-    <div id="journalOut"></div>
+    <div id="journalOut"><div class="empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><path d="M24 40l4-16h-8z" opacity=".35" fill="currentColor" stroke="none"/></svg><div><b>No journals added</b>Add one or more journals above, then select List researchers.</div></div></div>
   </section>
 </main>
 
@@ -326,9 +473,25 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
   <div id="formBody"></div>
 </div>
 
-<footer>
-  <p><b>Read before acting on results.</b> Tiers are automated signals built from OpenAlex metadata (citation rates, CWTS-core / Scopus / DOAJ indexing) and whatever watchlist you load. A flag is not proof a journal is predatory, and publishing in one is not misconduct: authors are often deceived, journals get hijacked or cloned, and title matches can be wrong. Verify each case (journal website, DOAJ, publisher, Think.Check.Submit) before drawing conclusions, and don't publish lists of named researchers on this basis alone.</p>
-  <p>Data: <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Optional watchlist: <a href="https://github.com/stop-predatory-journals/stop-predatory-journals.github.io" target="_blank" rel="noopener">Stop Predatory Journals</a> (MIT) or your own list.</p>
+<footer class="site">
+  <div class="f-in">
+    <div>
+      <h2>Use the results responsibly</h2>
+      <p>Tiers and levels are signals built from OpenAlex data and the lists you load. A flag is not proof that a journal is predatory, and publishing in one is not misconduct: authors are often deceived, and journals get hijacked or cloned. Check each case before acting, and don't publish lists of named researchers on this basis alone.</p>
+    </div>
+    <div>
+      <h2>Cite RIC</h2>
+      <p>Bitew, M. K. (2026). <i>Research Integrity Compass (RIC)</i> (Version 1.0.0) [Computer software]. <a href="https://github.com/Muler-21/Research-Integrity-Compass-" target="_blank" rel="noopener">github.com/Muler-21/Research-Integrity-Compass-</a></p>
+    </div>
+    <div>
+      <h2>Data and standards</h2>
+      <p><a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0), <a href="https://sfdora.org" target="_blank" rel="noopener">DORA</a>, the <a href="https://doi.org/10.1038/520429a" target="_blank" rel="noopener">Leiden Manifesto</a>, <a href="https://julkaisufoorumi.fi/en" target="_blank" rel="noopener">JUFO</a>, the <a href="https://kanalregister.hkdir.no/en" target="_blank" rel="noopener">Norwegian Register</a> and the optional <a href="https://github.com/stop-predatory-journals/stop-predatory-journals.github.io" target="_blank" rel="noopener">Stop Predatory Journals</a> list.</p>
+    </div>
+  </div>
+  <div class="f-base">
+    <span>Research Integrity Compass <span class="am">የምርምር ታማኝነት ኮምፓስ</span>, by Mulusew Kassa Bitew (<a href="https://orcid.org/0000-0001-6223-0037" target="_blank" rel="noopener">ORCID</a>). MIT licence.</span>
+    <span>Your API key and lists stay in this browser.</span>
+  </div>
 </footer>
 
 <script>
@@ -795,7 +958,7 @@ async function doScan(){
 }
 function scopeLabel(sc){ return [sc.inst?.name, sc.cc?`country ${sc.cc}`:"", sc.search?`“${sc.search}”`:""].filter(Boolean).join(" · "); }
 function renderScan(){
-  const out=$("#scanOut"); if(!scanState){ out.innerHTML=""; return; }
+  const out=$("#scanOut"); if(!scanState) return;
   const st=scanState; st.rows=st.g.groups.map(journalRow);
   out.innerHTML="";
   const p=document.createElement("div"); p.className="panel";
@@ -868,7 +1031,7 @@ async function doAuthor(){
   renderAuthor();
 }
 function renderAuthor(){
-  const out=$("#authorOut"); if(!authorState){ out.innerHTML=""; return; }
+  const out=$("#authorOut"); if(!authorState) return;
   const st=authorState, info=authorInfo(st.a.id), rows=st.g.groups.map(journalRow);
   out.innerHTML="";
   const p=document.createElement("div"); p.className="panel";
@@ -908,7 +1071,7 @@ async function doJournal(){
   renderJournal();
 }
 function renderJournal(){
-  const out=$("#journalOut"); if(!journalState){ out.innerHTML=""; return; }
+  const out=$("#journalOut"); if(!journalState) return;
   const st=journalState; out.innerHTML="";
   const p=document.createElement("div"); p.className="panel";
   p.innerHTML=`<h2>Journals</h2>`;
@@ -996,7 +1159,7 @@ function miniBar(r){
   return `<div class="tierbar" style="height:10px;margin:4px 0;min-width:120px">${STAFF_TIERS.filter(t=>r[t]).map(t=>`<div title="${esc(TIER[t].label)}: ${r[t]}" style="width:${100*r[t]/r.total}%;background:${TIER[t].c}"></div>`).join("")}</div>`;
 }
 function renderStaff(){
-  const out=$("#staffOut"); if(!staffState){ out.innerHTML=""; return; }
+  const out=$("#staffOut"); if(!staffState) return;
   const st=staffState; out.innerHTML="";
   const rowsAll=staffRows(st);
   const withPapers=rowsAll.filter(r=>r.total>0);
@@ -1343,7 +1506,7 @@ async function doIncent(){
 const ckCell = v => `<span class="${v==="y"?"y":v==="n"?"n":"q"}">${v==="y"?"✓":v==="n"?"✗":"?"}</span>`;
 const stTag = s => `<span class="st ${s}">${{eligible:"Eligible",review:"Needs review",rejected:"Not eligible",approved:"Approved"}[s]}</span>`;
 function renderIncent(){
-  const out=$("#incOut"); if(!incState){ out.innerHTML=""; return; }
+  const out=$("#incOut"); if(!incState) return;
   const claims=incState.works.map(screenWork);
   const people=computePayments(claims);
   incState.claims=claims; incState.people=people;
@@ -1721,7 +1884,7 @@ function rankingPanel(rows, st){
 }
 
 function renderMgmt(){
-  const out=$("#mgmtOut"); if(!mgmtState){ out.innerHTML=""; return; }
+  const out=$("#mgmtOut"); if(!mgmtState) return;
   const st=mgmtState; const rows=st.works.map(assessWork); st.rows=rows;
   const P=rows.length, cnt=f=>rows.filter(f).length;
   const withF=rows.filter(r=>r.fwci!=null);
@@ -1871,7 +2034,29 @@ function renderMgmt(){
 }
 
 /* ---------------- wiring ---------------- */
+const PT_ANGLE={impact:0, standards:90, integrity:180, policy:270}, PT_REST=24;
+function pointTo(pt){
+  const n=document.getElementById("needle"); if(!n) return;
+  n.classList.remove("settle");
+  n.style.transform=`rotate(${pt?PT_ANGLE[pt]:PT_REST}deg)`;
+  document.querySelectorAll("#compassSvg .pt").forEach(g=>g.classList.toggle("on", g.dataset.pt===pt));
+}
+function initCompass(){
+  const g=document.getElementById("ticks"); if(!g) return;
+  let t=""; for(let a=0;a<360;a+=5){ const major=a%45===0, r1=major?146:153, r2=161, rad=(a-90)*Math.PI/180;
+    t+=`<line x1="${200+r1*Math.cos(rad)}" y1="${200+r1*Math.sin(rad)}" x2="${200+r2*Math.cos(rad)}" y2="${200+r2*Math.sin(rad)}" stroke="${major?"#C9A043":"rgba(238,242,247,.35)"}" stroke-width="${major?2:1}"/>`; }
+  g.innerHTML=t;
+  const n=document.getElementById("needle");
+  n.addEventListener("animationend",()=>{ n.classList.remove("settle"); n.style.transform=`rotate(${PT_REST}deg)`; });
+  document.querySelectorAll("[data-go]").forEach(b=>{
+    b.addEventListener("mouseenter",()=>pointTo(b.dataset.pt)); b.addEventListener("focus",()=>pointTo(b.dataset.pt));
+    b.addEventListener("mouseleave",()=>pointTo(null)); b.addEventListener("blur",()=>pointTo(null));
+    b.addEventListener("click",()=>{ showTab(b.dataset.go); document.getElementById("tools").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+      const inp=document.querySelector(b.dataset.go==="mgmt"?"#acMgmtInst input":"#acIncInst input"); setTimeout(()=>inp?.focus({preventScroll:true}),450); });
+  });
+}
 function showTab(v){
+  const tb=document.querySelector(`.tabs button[data-v="${v}"]`); if(tb && $("#tabDesc")) $("#tabDesc").textContent=tb.dataset.desc||"";
   document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x.dataset.v===v));
   document.querySelectorAll(".view").forEach(el=>el.classList.toggle("on",el.id==="v-"+v));
 }
@@ -1888,7 +2073,7 @@ function init(){
     levelsChanged(n<0?`Couldn't find ISSN and level columns in ${f.name}.`:`Loaded ${n.toLocaleString()} ISSN levels from ${f.name} (${LV_NAME[key]}).`); e.target.value=""; });
   $("#lvClear").onclick=()=>{ S.levels={jufo:new Map(),nor:new Map()}; levelsChanged("Level lists cleared."); };
   if(!S.key && !watchSize()) $("#settings").open=true;
-  legend(); updChips();
+  legend(); updChips(); initCompass();
 
   document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.v));
   autocomplete("#acStaffInst","institutions",picker("staffInst","#pickedStaffInst",true));
