@@ -339,8 +339,10 @@ footer.site .am{color:#C5CFDF}
           <div class="legend" id="legend" style="margin-top:12px"></div>
           <h3>Campuses (optional)</h3>
           <p class="small muted" style="margin-top:0">RIC reads the campus from the address printed on each paper, for example "Burie Campus". For papers that name only a department or college, you can assign departments and colleges to a campus here: one campus per line, items separated by semicolons.</p>
-          <textarea id="campusMap" placeholder="Burie Campus: Department of Plant Science; Department of Horticulture&#10;Bichena Campus: Department of …"></textarea>
+          <textarea id="campusMap" placeholder="Burie Campus: Department of Plant Science; Department of Horticulture&#10;Main Campus: Department of …"></textarea>
           <div class="small muted" id="campusInfo"></div>
+          <label class="small" style="display:block;margin-top:8px"><input type="checkbox" id="useStruct" checked> Use the built-in <b>Debre Markos University</b> structure (applies only when the organization is DMU)</label>
+          <details class="small" style="margin-top:4px"><summary>Show the DMU colleges, departments and campuses</summary><div id="structList" style="margin-top:6px;line-height:1.55"></div></details>
         </div>
         <div>
           <h3>Watchlist (journals / publishers you treat as predatory)</h3>
@@ -1163,11 +1165,70 @@ const NOT_STATED="Campus not stated";
 function campusFromRaw(raw, instName){
   let s=String(raw||""); if(instName) s=s.replace(new RegExp(reEsc(instName),"ig"),",");
   if(/\bbu(?:rie|re)\b/i.test(s)) return "Burie Campus";
-  if(/\bbichena\b/i.test(s)) return "Bichena Campus";
   const m=s.match(/([A-Za-z][A-Za-z.\-]*(?:\s+[A-Za-z][A-Za-z.\-]*)?)\s+campus\b/i);
   if(m){ const w=m[1].trim().replace(/^(the|at|of)\s+/i,""); if(w && !/^(university|college|department)$/i.test(w)) return tidyAff(w+" Campus"); }
   return "";
 }
+/* Built-in organisation structure: Debre Markos University (dmu.edu.et "Departments" page and menu, November 2026).
+   Campus per department: M = Main, B = Burie, H = Health, MB = offered on both Main and Burie (campus cannot be inferred). */
+const DMU_STRUCT={match:/debre\s*markos/i, source:"dmu.edu.et Departments page, November 2026", units:[
+ {c:"College of Natural and Computational Sciences", re:/natural\s*(and|&)\s*computational/i, d:[
+   ["Biology",/\bbiology\b/i,"M"],["Chemistry",/chemistry/i,"M"],["Physics",/physics/i,"M"],["Mathematics",/mathematic/i,"M"],["Statistics",/statistic|\bstatics\b/i,"M"],
+   ["Biotechnology",/biotechnolog/i,"M"],["Sport Science",/sports?\s*science/i,"M"],["Geology",/geolog/i,"M"]]},
+ {c:"Institute of Technology", re:/institute\s*of\s*technology|\bdmiot\b/i, d:[
+   ["Electrical and Computer Engineering",/electrical/i,"M"],["Computer Science",/computer\s*science/i,"B"],["Software Engineering",/software/i,"M"],
+   ["Information Technology",/information\s*technolog/i,"M"],["Mechanical Engineering",/mechanical/i,"M"],["Civil Engineering",/civil\s*eng/i,"M"],
+   ["Construction Technology and Management",/construction/i,"M"],["Hydraulic and Water Resource Engineering",/hydraulic|water\s*resource/i,"M"]]},
+ {c:"College of Health Sciences", re:/health\s*science/i, d:[
+   ["Medical Laboratory Science",/medical\s*lab/i,"H"],["Pediatrics and Child Health Nursing",/pa?ediatric/i,"H"],["Pharmacy",/pharmac/i,"H"],["Nursing",/nursing/i,"H"],
+   ["Public Health",/public\s*health|epidemiolog/i,"H"],["Health Informatics",/health\s*informatic/i,"H"],["Human Nutrition and Food Science",/nutrition/i,"H"],
+   ["Midwifery",/midwi/i,"H"],["Environmental Health Science",/environmental\s*health/i,"H"]]},
+ {c:"School of Medicine", re:/(school|college|faculty)\s*of\s*medicine/i, d:[["Anaesthesia",/an(a)?esthe/i,"H"],["Medicine",/\bmedicine\b/i,"H"]]},
+ {c:"College of Agriculture and Natural Resources", re:/agricultur/i, d:[
+   ["Veterinary Laboratory Technology",/veterinary\s*lab/i,"M"],["Veterinary Science",/veterinar|vet\.?\s*med/i,"B"],
+   ["Agricultural Economics",/agricultural\s*economics/i,"M"],["Agricultural Business Value Chain Management",/value\s*chain|agri.?business/i,"B"],
+   ["Natural Resource Management",/natural\s*resource/i,"MB"],["Plant Science",/plant\s*science/i,"MB"],["Animal Science",/animal\s*(science|production)/i,"MB"],
+   ["Horticulture",/horticult/i,"MB"],["Rural Development and Agricultural Extension",/rural\s*development|extension/i,"M"],["Agroforestry",/agroforestry/i,"M"],
+   ["General Forestry",/\bforestry\b/i,"B"]]},
+ {c:"Institute of Land Administration", re:/land\s*admin/i, d:[["Land Administration and Surveying",/land\s*admin|surveying/i,"M"],["Real Property Valuation",/property\s*valuation/i,"M"]]},
+ {c:"College of Business and Economics", re:/business\s*(and|&)\s*economics/i, d:[
+   ["Accounting and Finance",/accounting/i,"MB"],["Economics",/\beconomics\b/i,"MB"],["Management",/\bmanagement\b/i,"MB"]]},
+ {c:"College of Social Sciences and Humanities", re:/social\s*science/i, d:[
+   ["Ethiopian Languages and Literature – Amharic",/amharic|ethiopian\s*languages/i,"M"],["English Language and Literature",/english/i,"M"],
+   ["Geography and Environmental Studies",/geograph/i,"M"],["History and Heritage Management",/history/i,"M"],["Civic and Ethical Education",/civic/i,"M"],
+   ["Journalism and Communication",/journalism/i,"M"],["Theatrical Arts",/theat/i,"M"],["Sociology",/sociolog/i,"M"],
+   ["Political Science and International Relations",/political\s*science|international\s*relations/i,"M"],["Peace and Development Studies",/peace/i,"B"],
+   ["Ge'ez Language and Literature",/ge.?ez/i,"M"]]},
+ {c:"Institute of Education and Behavioral Sciences", re:/education\s*(and|&)\s*behavio/i, d:[
+   ["Psychology",/psycholog/i,"M"],["Early Childhood Care and Education",/early\s*childhood/i,"M"],["Special Needs and Inclusive Education",/special\s*needs|inclusive/i,"M"]]},
+ {c:"School of Law", re:/(school|college|faculty)\s*of\s*law/i, d:[["Law",/\blaws?\b/i,"M"]]},
+]};
+const CAMPUS_CODE={M:"Main Campus",B:"Burie Campus",H:"Health Campus"};
+// department patterns in priority order (most specific first)
+const DMU_DEPT_ORDER=["Veterinary Laboratory Technology","Veterinary Science","Medical Laboratory Science","Pediatrics and Child Health Nursing","Health Informatics","Environmental Health Science","Public Health",
+  "Agricultural Economics","Agricultural Business Value Chain Management","Natural Resource Management","Construction Technology and Management","Electrical and Computer Engineering",
+  "Land Administration and Surveying","Real Property Valuation","Agroforestry"];
+const DMU_DEPTS=(()=>{ const all=DMU_STRUCT.units.flatMap(u=>u.d.map(([n,re,k])=>({n,re,k,u})));
+  return [...DMU_DEPT_ORDER.map(n=>all.find(x=>x.n===n)), ...all.filter(x=>!DMU_DEPT_ORDER.includes(x.n))]; })();
+for(const u of DMU_STRUCT.units){ const ks=new Set(u.d.map(x=>x[2])); u.k=ks.size===1&&!ks.has("MB")?[...ks][0]:""; }
+S.useStruct=true;
+function structFor(instName){ return S.useStruct && instName && DMU_STRUCT.match.test(instName) ? DMU_STRUCT : null; }
+/* map a parsed department / college onto the official structure; returns canonical names + inferred campus */
+function applyStruct(o){
+  const strip=x=>String(x||"").replace(/\b(department|dept\.?)\s*(of)?\b/ig," ");
+  let hit=o.dept ? DMU_DEPTS.find(x=>x.re.test(strip(o.dept))) : null;
+  let unit=hit?.u || (o.college ? DMU_STRUCT.units.find(u=>u.re.test(o.college)) : null);
+  if(!hit && o.college && !unit) { hit=DMU_DEPTS.find(x=>x.re.test(o.college)); unit=hit?.u||null; }
+  if(!hit && !unit) return o;
+  const r={...o};
+  if(hit) r.dept="Department of "+hit.n;
+  if(unit) r.college=unit.c;
+  const code=hit ? hit.k : unit.k;
+  r.campusInf = CAMPUS_CODE[code] || "";
+  if(/health/i.test(r.campus)) r.campus="Health Campus"; else if(/\bmain\b/i.test(r.campus)) r.campus="Main Campus";
+  return r;
+}
+
 /* optional user list: "Burie Campus: Department of Plant Science; College of …" */
 S.campusMap=new Map();
 function parseCampusMap(text){
@@ -1180,7 +1241,7 @@ function parseCampusMap(text){
   return m;
 }
 function mapCampus(dept,college){ return (dept && S.campusMap.get(norm(dept))) || (college && S.campusMap.get(norm(college))) || ""; }
-function campusOf(p){ return p.campus || mapCampus(p.dept,p.college) || ""; }
+function campusOf(p){ return p.campus || mapCampus(p.dept,p.college) || p.campusInf || ""; }
 function parseAffil(raw, instName){
   const out={dept:"",college:"",campus:campusFromRaw(raw,instName)}; if(!raw) return out;
   const nameRe = instName ? new RegExp(reEsc(instName),"ig") : null;
@@ -1190,7 +1251,7 @@ function parseAffil(raw, instName){
     if(!out.dept && (DEPT_RE.test(sg) || /\bdepartment of\b/i.test(sg))){ out.dept=tidyAff(sg.replace(/^.*?(?=\bdepartment of\b)/i,"")); continue; }
     if(!out.college && COLL_RE.test(sg) && !/\bcampus\b/i.test(sg)){ out.college=tidyAff(sg); continue; }
   }
-  return out;
+  return structFor(instName) ? applyStruct(out) : out;
 }
 /* the address strings an author used for one institution on one paper */
 function affStrings(a, instId, instName){
@@ -1205,10 +1266,11 @@ function affStrings(a, instId, instName){
   return raws;
 }
 function paperDept(a, instId, instName){
-  let best={dept:"",college:"",campus:""};
+  let best={dept:"",college:"",campus:"",campusInf:""};
   for(const r of affStrings(a,instId,instName)){ const p=parseAffil(r,instName);
-    if(!best.dept && p.dept){ best.dept=p.dept; best.college=best.college||p.college; }
+    if(!best.dept && p.dept){ best.dept=p.dept; best.college=p.college||best.college; if(p.campusInf) best.campusInf=p.campusInf; }
     if(!best.college && p.college) best.college=p.college;
+    if(!best.campusInf && p.campusInf) best.campusInf=p.campusInf;
     if(!best.campus && p.campus) best.campus=p.campus; }
   best.campus=campusOf(best);
   return best;
@@ -2217,7 +2279,7 @@ function renderMgmt(){
     const cp=document.createElement("div"); cp.className="panel"; cp.id="mgmtCampus";
     const notStated=cmap.get(NOT_STATED)?.papers.length||0;
     cp.innerHTML=`<div class="toolbar"><h2 style="margin:0">By campus</h2><span class="grow"></span><button class="small dl">Download CSV</button></div>
-      <p class="small muted" style="margin:0 0 8px">Read from the addresses on the papers${S.campusMap.size?" and your campus list in Setup":""}. ${notStated?`${notStated.toLocaleString()} paper${notStated===1?" names":"s name"} no campus; asking staff to write their campus in their affiliation fixes this, and Setup lets you assign departments to a campus. `:""}Select a campus to filter the whole dashboard.</p><div class="tw"></div>`;
+      <p class="small muted" style="margin:0 0 8px">Read from the addresses on the papers${S.campusMap.size?", your campus list in Setup":""}${structFor(R.institution?.name)?", and the official DMU list of departments (a department taught on one campus only gives that campus; Plant Science, Animal Science, Natural Resource Management, Horticulture, Accounting, Economics and Management run on both Main and Burie, so for them the address must say which)":""}. ${notStated?`${notStated.toLocaleString()} paper${notStated===1?" names":"s name"} no campus; asking staff to write their campus in their affiliation fixes this, and Setup lets you assign departments to a campus. `:""}Select a campus to filter the whole dashboard.</p><div class="tw"></div>`;
     const maxC=Math.max(1,...cRows.map(r=>r.P));
     table(cp.querySelector(".tw"), cRows, [
       {k:"campus",h:"Campus",sortv:r=>r.campus===NOT_STATED?"~":r.campus,html:r=>`<a href="#mgmtFilters" data-campus="${esc(r.campus)}">${esc(r.campus)}</a>${st.fCampus===r.campus?` <span class="muted small">(selected)</span>`:""}`},
@@ -2447,6 +2509,12 @@ function init(){
   for(const id of ["tHigh","tSolid","tLow","tVol"]){ const v=store.get(id); if(v) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>{ store.set(id,e.target.value); rerender(); }); }
   for(const id of ["y0","y1","wtype"]){ const v=store.get(id); if(v!==null) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>store.set(id,e.target.value)); }
   loadWatchFromStore(); loadLevels();
+  { S.useStruct=store.get("useStruct")!=="0"; $("#useStruct").checked=S.useStruct;
+    $("#useStruct").addEventListener("change",e=>{ S.useStruct=e.target.checked; store.set("useStruct",S.useStruct?"1":"0"); rerender(); });
+    const lbl={M:"Main",B:"Burie",H:"Health",MB:"Main and Burie"};
+    $("#structList").innerHTML=`<p class="muted" style="margin:0 0 6px">From ${esc(DMU_STRUCT.source)}. A department written on a paper gives its college and, when the department runs on one campus only, its campus. Departments taught on both Main and Burie need the campus written in the address (or a line above). A campus written in the address always wins; your list above comes next.</p>`+
+      DMU_STRUCT.units.map(u=>`<div><b>${esc(u.c)}</b>: ${u.d.map(([n,,k])=>`${esc(n)} <span class="muted">(${lbl[k]})</span>`).join(", ")}</div>`).join("");
+  }
   { const t=store.get("campusMap")||""; $("#campusMap").value=t; S.campusMap=parseCampusMap(t);
     let tm=null; const upd=()=>{ S.campusMap=parseCampusMap($("#campusMap").value); store.set("campusMap",$("#campusMap").value);
       $("#campusInfo").textContent=S.campusMap.size?`${S.campusMap.size} department/college assignment${S.campusMap.size===1?"":"s"} in use.`:""; };
