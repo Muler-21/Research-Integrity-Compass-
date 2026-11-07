@@ -1920,6 +1920,27 @@ async function doMgmt(){
 
 function pctTxt(n,d){ return d?`${(100*n/d).toFixed(1)}%`:"–"; }
 function mean(a){ const v=a.filter(x=>x!=null); return v.length? v.reduce((s,x)=>s+x,0)/v.length : null; }
+/* ---- authorship & productivity check ----
+   International references: ~1–2 first-author papers a year is the norm (Mizuno & Kawai 2016);
+   the best UK astronomy academic averaged ~7 first-author papers a year (Fairbairn 2008);
+   >72 full papers in one calendar year = "hyperprolific" (Ioannidis, Klavans & Boyack, Nature 2018).
+   Institution-relative: Tukey's far-out fence Q3 + 3×IQR (IQR floored at 1 for whole-number counts). */
+const PROD={typicalFirst:2, highFirst:7, hyper:72};
+function quantile(v,q){ const a=v.filter(x=>x!=null).sort((x,y)=>x-y); if(!a.length) return null; const i=(a.length-1)*q, lo=Math.floor(i), hi=Math.ceil(i); return a[lo]+(a[hi]-a[lo])*(i-lo); }
+function tukeyFence(v){ const q1=quantile(v,.25), q3=quantile(v,.75); if(q1==null) return null; return {q1, q3, med:quantile(v,.5), p90:quantile(v,.9), max:Math.max(...v), fence:q3+3*Math.max(1,q3-q1)}; }
+function authorPos(r,i){ const a=r.auths[i]; const p=a?.author_position; if(p) return p; return i===0?"first":(i===r.auths.length-1&&r.auths.length>1?"last":"middle"); }
+function prodVerdict(pr, fT, fF){
+  const why=[];
+  if(pr.peakTot>PROD.hyper) why.push(`${pr.peakTot} papers in ${pr.peakTotY}: above the international hyperprolific line (>${PROD.hyper} a year, one every 5 days)`);
+  if(pr.peakFirst>PROD.highFirst) why.push(`${pr.peakFirst} first-author papers in ${pr.peakFirstY}: above the best published benchmark (~${PROD.highFirst} a year)`);
+  if(fT && fT.n>=8 && pr.peakTot>fT.fence) why.push(`papers per year (${pr.peakTot}) is a statistical outlier here (fence ${fT.fence.toFixed(1)})`);
+  if(fF && fF.n>=8 && pr.peakFirst>fF.fence) why.push(`first-author papers per year (${pr.peakFirst}) is a statistical outlier here (fence ${fF.fence.toFixed(1)})`);
+  const lvl = pr.peakTot>PROD.hyper ? "hyper" : why.length ? "check" : pr.peakFirst>PROD.typicalFirst ? "high" : pr.first ? "typical" : "nofirst";
+  return {lvl, why};
+}
+const PRODL={hyper:["⚠ Hyperprolific","var(--b-risk)"], check:["Check contribution","var(--caution)"], high:["High (3–7 first-author/yr)","var(--b-str)"], typical:["Typical (≤2 first-author/yr)","var(--muted)"], nofirst:["No first-author paper","var(--muted)"]};
+const prodTag=l=>`<b style="color:${PRODL[l][1]}">${PRODL[l][0]}</b>`;
+
 function median(a){ const v=a.filter(x=>x!=null).sort((x,y)=>x-y); if(!v.length) return null; const m=v.length>>1; return v.length%2?v[m]:(v[m-1]+v[m])/2; }
 
 function yearChart(rows, y0, y1){
@@ -2170,11 +2191,21 @@ function renderMgmt(){
   const ppl=new Map();
   for(const r of rows) r.auths.forEach((a,i)=>{ if(!a.aff||!a.author?.id) return; const id=sid(a.author.id);
     const o=ppl.get(id)||{id,name:a.author.display_name,orcid:String(a.author.orcid||"").replace(/^https?:\/\/orcid\.org\//,""),rs:[]}; o.rs.push({r,i}); ppl.set(id,o); });
+  const nYears=Math.max(1,(+st.y1)-(+st.y0)+1);
+  const yearStats=list=>{ const tot=new Map(), fst=new Map(); let first=0,middle=0,last=0;
+    for(const {r,i} of list){ const y=r.year; tot.set(y,(tot.get(y)||0)+1); const pos=authorPos(r,i);
+      if(pos==="first"){ first++; fst.set(y,(fst.get(y)||0)+1); } else if(pos==="last") last++; else middle++; }
+    const pk=m=>{ let by=null,bn=0; for(const [y,n] of m) if(n>bn){ bn=n; by=y; } return [bn,by]; };
+    const [peakTot,peakTotY]=pk(tot), [peakFirst,peakFirstY]=pk(fst);
+    return {first, middle, last, peakTot, peakTotY, peakFirst, peakFirstY, perYr:list.length/nYears, firstPerYr:first/nYears}; };
   const pRows=[...ppl.values()].map(o=>{ const rs=o.rs.map(x=>x.r); const n=rs.length; const b={}; for(const B of BANDS) b[B.id]=rs.filter(r=>r.band===B.id).length;
     return {...o, P:n, top10:rs.filter(r=>r.top10).length, fwci:median(rs.map(r=>r.fwci)), intl:rs.filter(r=>r.intl).length/n,
       ledN:o.rs.filter(x=>x.r.led && (x.r.w.corresponding_institution_ids?.length ? (x.r.auths[x.i].is_corresponding) : x.i===0)).length,
-      risk:b.risk, dmu:rs.filter(r=>r.dmuOk).length, bands:b, dept:dIdx.get(o.id)?.dept||"", college:dIdx.get(o.id)?.college||"", campus:dIdx.get(o.id)?.campus||NOT_STATED}; })
+      risk:b.risk, dmu:rs.filter(r=>r.dmuOk).length, bands:b, dept:dIdx.get(o.id)?.dept||"", college:dIdx.get(o.id)?.college||"", campus:dIdx.get(o.id)?.campus||NOT_STATED, ...yearStats(o.rs)}; })
     .filter(pr=>(!st.fCampus||pr.campus===st.fCampus)&&(!st.fDept||pr.dept===st.fDept));
+  { const fT=tukeyFence(pRows.map(r=>r.peakTot)), fF=tukeyFence(pRows.map(r=>r.peakFirst));
+    if(fT) fT.n=pRows.length; if(fF) fF.n=pRows.length;
+    for(const pr of pRows) pr.prod=prodVerdict(pr, fT, fF); }
 
   // By campus (respects the department filter, ignores the campus filter so campuses can be compared)
   const inDept=allRows.filter(r=>!st.fDept||r.depts.includes(st.fDept));
@@ -2245,6 +2276,10 @@ function renderMgmt(){
     {k:"fwci",h:"Median FWCI",num:true},
     {k:"intl",h:"International",num:true,html:r=>(100*r.intl).toFixed(0)+"%"},
     {k:"ledN",h:"As corresponding",num:true},
+    {k:"first",h:"Author position 1st · mid · last",sortv:r=>r.first,html:r=>`${r.first} · ${r.middle} · ${r.last}`},
+    {k:"peakFirst",h:"1st-author / yr (peak)",num:true,html:r=>`${r.peakFirst}${r.peakFirstY?`<div class="flagnote">${r.peakFirstY} · avg ${r.firstPerYr.toFixed(1)}</div>`:""}`},
+    {k:"peakTot",h:"All papers / yr (peak)",num:true,html:r=>`${r.peakTot}<div class="flagnote">${r.peakTotY} · avg ${r.perYr.toFixed(1)}</div>`},
+    {k:"prod",h:"Productivity check",sortv:r=>({hyper:4,check:3,high:2,typical:1,nofirst:0})[r.prod.lvl],html:r=>prodTag(r.prod.lvl)},
     {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">⚠ ${r.risk}</b>`:`<span class="muted">0</span>`},
     {k:"dmu",h:"Reward-eligible",num:true},
   ];
@@ -2255,8 +2290,63 @@ function renderMgmt(){
   rp.querySelector(".dl").onclick=()=>download(`researchers_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(rRows(), [
     {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"dept",h:"department"},{k:"college",h:"college_or_faculty"},{k:"campus",h:"campus"},{k:"P",h:"papers"},
     ...BANDS.map(b=>({k:"b_"+b.id,h:"band_"+b.id,csv:r=>r.bands[b.id]})),{k:"top10",h:"top10_papers"},{k:"fwci",h:"median_fwci"},
-    {k:"intl",h:"international_share",csv:r=>(100*r.intl).toFixed(1)},{k:"ledN",h:"as_corresponding"},{k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
+    {k:"intl",h:"international_share",csv:r=>(100*r.intl).toFixed(1)},{k:"ledN",h:"as_corresponding"},
+    {k:"first",h:"first_author_papers"},{k:"middle",h:"middle_author_papers"},{k:"last",h:"last_author_papers"},
+    {k:"firstPerYr",h:"first_author_per_year_avg",csv:r=>r.firstPerYr.toFixed(2)},{k:"peakFirst",h:"first_author_peak_year_count"},{k:"peakFirstY",h:"first_author_peak_year"},
+    {k:"perYr",h:"papers_per_year_avg",csv:r=>r.perYr.toFixed(2)},{k:"peakTot",h:"papers_peak_year_count"},{k:"peakTotY",h:"papers_peak_year"},
+    {k:"prod",h:"productivity_check",csv:r=>PRODL[r.prod.lvl][0]},{k:"prodWhy",h:"productivity_reasons",csv:r=>r.prod.why.join("; ")},
+    {k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
   out.appendChild(rp);
+
+  // Authorship & productivity check
+  { const pk=document.createElement("div"); pk.className="panel"; pk.id="mgmtProd";
+    const fF=tukeyFence(pRows.map(r=>r.peakFirst)), fT=tukeyFence(pRows.map(r=>r.peakTot));
+    const avF=tukeyFence(pRows.map(r=>r.firstPerYr)), avT=tukeyFence(pRows.map(r=>r.perYr));
+    const flagged=pRows.filter(r=>r.prod.lvl==="hyper"||r.prod.lvl==="check");
+    const cnt=l=>pRows.filter(r=>r.prod.lvl===l).length;
+    const f1=x=>x==null?"—":(Math.round(x*10)/10).toString();
+    pk.innerHTML=`<div class="toolbar"><h2 style="margin:0">Authorship and productivity check</h2><span class="grow"></span><button class="small dl">Download CSV</button></div>
+      <p class="small muted" style="margin:0 0 8px">How many papers each researcher publishes a year as <b>first author</b> and in <b>any author position</b>, judged two ways: against international reference values, and against everyone else in this selection with a standard statistical outlier rule. A flag is a reason to ask about contributions (ICMJE/CRediT), never a finding of misconduct.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="n">${f1(avF?.med)}</div><div class="l">median first-author papers a year (average over ${nYears} yr)</div></div>
+        <div class="kpi"><div class="n">${f1(avT?.med)}</div><div class="l">median papers a year, any position</div></div>
+        <div class="kpi"><div class="n">${pRows.length?Math.round(100*pRows.filter(r=>r.first>0).length/pRows.length):0}%</div><div class="l">researchers with at least one first-author paper</div></div>
+        <div class="kpi"><div class="n">${cnt("typical")} · ${cnt("high")}</div><div class="l">typical (≤2) · high (3–7) first-author a year</div></div>
+        <div class="kpi"><div class="n" style="color:${flagged.length?"var(--caution)":"inherit"}">${flagged.length}</div><div class="l">to check (${cnt("hyper")} hyperprolific)</div></div>
+      </div>
+      <div class="tw dist" style="margin:8px 0"></div>
+      <details style="margin:4px 0 10px"><summary class="small"><b>Rules used</b></summary><div class="small" style="margin-top:6px;line-height:1.6">
+        <b>International reference values</b> (per researcher, per calendar year):<br>
+        · First-author papers: about <b>1–2 a year is the norm</b> (Mizuno &amp; Kawai 2016, PubMed first authors 2002–2014); <b>3–7</b> is high; <b>more than ${PROD.highFirst}</b> exceeds the best performer in published benchmarks (Fairbairn 2008, UK astronomy) → check contribution.<br>
+        · All papers, any position: <b>more than ${PROD.hyper}</b> full papers in one year (one every 5 days) = <b>hyperprolific</b> (Ioannidis, Klavans &amp; Boyack, <i>Nature</i> 2018).<br>
+        <b>Statistical rule</b> (within this selection): Tukey's far-out fence, <b>Q3 + 3 × IQR</b> of the peak-year counts (IQR floored at 1 because counts are whole numbers); applied only when at least 8 researchers are present.<br>
+        <b>Limits:</b> only papers carrying this institution's affiliation in ${esc(String(st.y0))}–${esc(String(st.y1))} are counted, so a person's total output elsewhere can be higher (open their OpenAlex profile). Author order means different things in different fields (alphabetical in mathematics and some economics; last author = supervisor in life sciences). The current year is incomplete.
+      </div></details>
+      <div class="tw lst"></div>`;
+    table(pk.querySelector(".dist"), [
+      {m:"First-author papers in peak year", ...fF}, {m:"All papers in peak year", ...fT},
+      {m:"First-author papers, yearly average", ...avF}, {m:"All papers, yearly average", ...avT}].filter(r=>r.q1!=null), [
+      {k:"m",h:"Distribution across researchers"},{k:"q1",h:"Q1",num:true,html:r=>f1(r.q1)},{k:"med",h:"Median",num:true,html:r=>f1(r.med)},{k:"q3",h:"Q3",num:true,html:r=>f1(r.q3)},
+      {k:"p90",h:"90th pct",num:true,html:r=>f1(r.p90)},{k:"max",h:"Max",num:true,html:r=>f1(r.max)},{k:"fence",h:"Outlier fence Q3+3·IQR",num:true,html:r=>f1(r.fence)}]);
+    const lst=flagged.length?flagged:pRows.filter(r=>r.prod.lvl==="high");
+    if(lst.length){
+      pk.querySelector(".lst").insertAdjacentHTML("beforebegin",`<div class="small" style="margin:4px 0 6px"><b>${flagged.length?"Researchers to check":"No one is flagged. Researchers with high first-author output:"}</b></div>`);
+      table(pk.querySelector(".lst"), lst, [
+        {k:"name",h:"Researcher",html:r=>`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>`},
+        {k:"dept",h:"Department / college",sortv:r=>r.dept||"~",html:deptCell},
+        {k:"peakFirst",h:"1st-author (peak yr)",num:true},{k:"peakTot",h:"All papers (peak yr)",num:true},
+        {k:"first",h:"1st · mid · last",sortv:r=>r.first,html:r=>`${r.first} · ${r.middle} · ${r.last}`},
+        {k:"prod",h:"Check",sortv:r=>({hyper:4,check:3,high:2})[r.prod.lvl]||0,html:r=>`${prodTag(r.prod.lvl)}${r.prod.why.length?`<div class="flagnote">${esc(r.prod.why.join(" · "))}</div>`:""}`},
+      ], {sort:"prod"});
+    } else pk.querySelector(".lst").innerHTML=`<p class="small muted">Everyone is within the typical range.</p>`;
+    pk.querySelector(".dl").onclick=()=>download(`authorship_productivity_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(pRows, [
+      {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"dept",h:"department"},{k:"campus",h:"campus"},
+      {k:"first",h:"first_author_papers"},{k:"middle",h:"middle_author_papers"},{k:"last",h:"last_author_papers"},
+      {k:"firstPerYr",h:"first_author_per_year_avg",csv:r=>r.firstPerYr.toFixed(2)},{k:"peakFirst",h:"first_author_peak_year_count"},{k:"peakFirstY",h:"first_author_peak_year"},
+      {k:"perYr",h:"papers_per_year_avg",csv:r=>r.perYr.toFixed(2)},{k:"peakTot",h:"papers_peak_year_count"},{k:"peakTotY",h:"papers_peak_year"},
+      {k:"prod",h:"productivity_check",csv:r=>PRODL[r.prod.lvl][0]},{k:"prodWhy",h:"reasons",csv:r=>r.prod.why.join("; ")}]));
+    out.appendChild(pk);
+  }
 
   // Risk register
   const risk=rows.filter(r=>r.band==="risk");
