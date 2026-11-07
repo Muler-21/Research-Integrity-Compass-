@@ -337,6 +337,10 @@ footer.site .am{color:#C5CFDF}
             <label class="f">“Mass output” works ≥<input id="tVol" type="number" step="100" value="3000" style="width:100px"></label>
           </div>
           <div class="legend" id="legend" style="margin-top:12px"></div>
+          <h3>Campuses (optional)</h3>
+          <p class="small muted" style="margin-top:0">RIC reads the campus from the address printed on each paper, for example "Burie Campus". For papers that name only a department or college, you can assign departments and colleges to a campus here: one campus per line, items separated by semicolons.</p>
+          <textarea id="campusMap" placeholder="Burie Campus: Department of Plant Science; Department of Horticulture&#10;Bichena Campus: Department of …"></textarea>
+          <div class="small muted" id="campusInfo"></div>
         </div>
         <div>
           <h3>Watchlist (journals / publishers you treat as predatory)</h3>
@@ -1154,14 +1158,37 @@ function tidyAff(x){
   x=x.replace(/^dept\.?\s*(of\s+)?/i,"Department of ").replace(/^department\s+(?!of\b)/i,"Department of ").replace(/^department of/i,"Department of");
   return x.charAt(0).toUpperCase()+x.slice(1);
 }
+const NOT_STATED="Campus not stated";
+/* campus as written in an address, e.g. "Burie Campus", "Bure", "Bichena", "Main Campus", "Health Science Campus" */
+function campusFromRaw(raw, instName){
+  let s=String(raw||""); if(instName) s=s.replace(new RegExp(reEsc(instName),"ig"),",");
+  if(/\bbu(?:rie|re)\b/i.test(s)) return "Burie Campus";
+  if(/\bbichena\b/i.test(s)) return "Bichena Campus";
+  const m=s.match(/([A-Za-z][A-Za-z.\-]*(?:\s+[A-Za-z][A-Za-z.\-]*)?)\s+campus\b/i);
+  if(m){ const w=m[1].trim().replace(/^(the|at|of)\s+/i,""); if(w && !/^(university|college|department)$/i.test(w)) return tidyAff(w+" Campus"); }
+  return "";
+}
+/* optional user list: "Burie Campus: Department of Plant Science; College of …" */
+S.campusMap=new Map();
+function parseCampusMap(text){
+  const m=new Map();
+  for(const line of String(text||"").split(/\r?\n/)){
+    const i=line.indexOf(":"); if(i<1) continue;
+    const campus=tidyAff(line.slice(0,i).trim().replace(/\s*campus$/i,"")+" Campus");
+    for(const item of line.slice(i+1).split(/[;|]/)){ const k=norm(item); if(k.length>3) m.set(k,campus); }
+  }
+  return m;
+}
+function mapCampus(dept,college){ return (dept && S.campusMap.get(norm(dept))) || (college && S.campusMap.get(norm(college))) || ""; }
+function campusOf(p){ return p.campus || mapCampus(p.dept,p.college) || ""; }
 function parseAffil(raw, instName){
-  const out={dept:"",college:""}; if(!raw) return out;
+  const out={dept:"",college:"",campus:campusFromRaw(raw,instName)}; if(!raw) return out;
   const nameRe = instName ? new RegExp(reEsc(instName),"ig") : null;
   for(let sg of String(raw).split(/[,;|]|\s[-–]\s/)){
     sg=sg.trim(); if(nameRe) sg=sg.replace(nameRe,"").trim();
     if(sg.length<6) continue;
     if(!out.dept && (DEPT_RE.test(sg) || /\bdepartment of\b/i.test(sg))){ out.dept=tidyAff(sg.replace(/^.*?(?=\bdepartment of\b)/i,"")); continue; }
-    if(!out.college && COLL_RE.test(sg)){ out.college=tidyAff(sg); continue; }
+    if(!out.college && COLL_RE.test(sg) && !/\bcampus\b/i.test(sg)){ out.college=tidyAff(sg); continue; }
   }
   return out;
 }
@@ -1178,24 +1205,34 @@ function affStrings(a, instId, instName){
   return raws;
 }
 function paperDept(a, instId, instName){
-  for(const r of affStrings(a,instId,instName)){ const p=parseAffil(r,instName); if(p.dept||p.college) return p; }
-  return {dept:"",college:""};
+  let best={dept:"",college:"",campus:""};
+  for(const r of affStrings(a,instId,instName)){ const p=parseAffil(r,instName);
+    if(!best.dept && p.dept){ best.dept=p.dept; best.college=best.college||p.college; }
+    if(!best.college && p.college) best.college=p.college;
+    if(!best.campus && p.campus) best.campus=p.campus; }
+  best.campus=campusOf(best);
+  return best;
 }
 /* most frequently used department / college per author across their papers */
 function deptIndex(works, instId, instName){
   const m=new Map();
   for(const w of works) for(const a of (w.authorships||[])){
     if(!a.author?.id) continue;
-    const p=paperDept(a,instId,instName); if(!p.dept && !p.college) continue;
-    const id=sid(a.author.id); const o=m.get(id)||{d:new Map(),c:new Map(),n:0};
+    const p=paperDept(a,instId,instName); if(!p.dept && !p.college && !p.campus) continue;
+    const id=sid(a.author.id); const o=m.get(id)||{d:new Map(),c:new Map(),k:new Map(),n:0};
+    if(p.campus){ const e=o.k.get(p.campus)||{v:p.campus,n:0}; e.n++; o.k.set(p.campus,e); }
     if(p.dept){ const k=norm(p.dept); const e=o.d.get(k)||{v:p.dept,n:0}; e.n++; o.d.set(k,e); }
     if(p.college){ const k=norm(p.college); const e=o.c.get(k)||{v:p.college,n:0}; e.n++; o.c.set(k,e); }
     o.n++; m.set(id,o);
   }
   const top=mp=>[...mp.values()].sort((x,y)=>y.n-x.n)[0]?.v||"";
-  const res=new Map(); for(const [id,o] of m) res.set(id,{dept:top(o.d), college:top(o.c), n:o.n}); return res;
+  const res=new Map();
+  for(const [id,o] of m){ const dept=top(o.d), college=top(o.c); res.set(id,{dept, college, campus: top(o.k) || mapCampus(dept,college), n:o.n}); }
+  return res;
 }
-const deptCell = r => r.dept||r.college ? `${esc(r.dept||"—")}${r.college?`<div class="flagnote">${esc(r.college)}</div>`:""}` : `<span class="muted small">not stated</span>`;
+const deptCell = r => (r.dept||r.college ? `${esc(r.dept||"—")}${r.college?`<div class="flagnote">${esc(r.college)}</div>`:""}` : `<span class="muted small">department not stated</span>`)
+  + (r.campus && r.campus!==NOT_STATED ? `<div class="flagnote"><b>${esc(r.campus)}</b></div>` : "");
+function campusOptions(list){ return [...new Set(list)].sort((a,b)=>a===NOT_STATED?1:b===NOT_STATED?-1:a.localeCompare(b)); }
 function deptOptions(rows){ return [...new Set(rows.map(r=>r.dept).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 
 /* ---------------- STAFF view ---------------- */
@@ -1256,7 +1293,7 @@ async function doStaff(){
     const works=await fetchWorks(filter, 6000);
     depts=deptIndex(works, inst.id, inst.name);
   }catch(e){ if(e.status===429) throw e; deptNote="Departments couldn't be read this time ("+e.message+")."; }
-  staffState={inst, who, minWorks, staffTotal:staff.total, staffIds:staff.ids, g, jrows, counts, depts, deptNote, deptSel:"",
+  staffState={inst, who, minWorks, staffTotal:staff.total, staffIds:staff.ids, g, jrows, counts, depts, deptNote, deptSel:"", campusSel:"",
               none: g.complete&&g.totalWorks!=null?Math.max(0,g.totalWorks-sum):0, sig:tierSig(), sel:null, showZero:false, onlyConcern:false};
   renderStaff();
 }
@@ -1265,7 +1302,7 @@ function staffRows(st){
   return st.staffIds.map(id=>{
     const a=S.authors.get(id)||{}; const info=authorInfo(id); const c=st.counts.get(id)||{};
     const d=st.depts?.get(id)||{};
-    const r={id, name:a.display_name||id, ...info, dept:d.dept||"", college:d.college||""};
+    const r={id, name:a.display_name||id, ...info, dept:d.dept||"", college:d.college||"", campus:d.campus||mapCampus(d.dept,d.college)||NOT_STATED};
     let tot=0; for(const t of STAFF_TIERS){ r[t]=c[t]||0; tot+=r[t]; }
     r.total=tot; r.concern=r.flagged+r.caution;
     r.pctTop = tot ? (r.high+r.solid)/tot : null;
@@ -1300,9 +1337,10 @@ function renderStaff(){
   tp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Staff${st.sel?` with papers in ${tierTag(st.sel)} journals`:""}</h2><span class="grow"></span>
     <label class="small"><input type="checkbox" class="concern" ${st.onlyConcern?"checked":""}> only people with Watchlist / Warning papers</label>
     <label class="small"><input type="checkbox" class="zero" ${st.showZero?"checked":""}> include people with no papers in range</label>
-    <select class="dsel" style="max-width:260px"><option value="">All departments</option>${deptOptions(rowsAll).map(d=>`<option ${st.deptSel===d?"selected":""}>${esc(d)}</option>`).join("")}</select>
+    <select class="csel" style="max-width:200px"><option value="">All campuses</option>${campusOptions(rowsAll.map(r=>r.campus)).map(c=>`<option ${st.campusSel===c?"selected":""}>${esc(c)}</option>`).join("")}</select>
+    <select class="dsel" style="max-width:260px"><option value="">All departments</option>${deptOptions(rowsAll.filter(r=>!st.campusSel||r.campus===st.campusSel)).map(d=>`<option ${st.deptSel===d?"selected":""}>${esc(d)}</option>`).join("")}</select>
     <input placeholder="filter by name…" class="af" style="width:180px"><button class="small dl">Download CSV</button></div>
-    <p class="small muted" style="margin:0 0 8px">Counts = papers carrying this organization's affiliation, in your year range and work-type filter. Department and college are read from the addresses people print on their papers (the one they use most often). <b>Profile</b> opens that person's journal list.${st.deptNote?` <b>${esc(st.deptNote)}</b>`:""}</p>
+    <p class="small muted" style="margin:0 0 8px">Counts = papers carrying this organization's affiliation, in your year range and work-type filter. Department, college and campus are read from the addresses people print on their papers (the one they use most often); Setup lets you assign departments to a campus. <b>Profile</b> opens that person's journal list.${st.deptNote?` <b>${esc(st.deptNote)}</b>`:""}</p>
     <div class="small muted cnt" style="margin-bottom:6px"></div><div class="tw"></div>`;
   out.appendChild(tp);
   const cols=[
@@ -1315,18 +1353,19 @@ function renderStaff(){
     {k:"_p",h:"",html:r=>`<button class="small prof" data-id="${r.id}">Profile</button>`},
   ];
   const rows=()=>{ const q=norm(tp.querySelector(".af").value);
-    return rowsAll.filter(r=>(st.showZero||r.total>0) && (!st.sel||r[st.sel]>0) && (!st.onlyConcern||r.concern>0) && (!st.deptSel||r.dept===st.deptSel) && (!q||norm(r.name+" "+r.dept+" "+r.college).includes(q))); };
+    return rowsAll.filter(r=>(st.showZero||r.total>0) && (!st.sel||r[st.sel]>0) && (!st.onlyConcern||r.concern>0) && (!st.campusSel||r.campus===st.campusSel) && (!st.deptSel||r.dept===st.deptSel) && (!q||norm(r.name+" "+r.dept+" "+r.college+" "+r.campus).includes(q))); };
   const draw=()=>{ const rs=rows(); tp.querySelector(".cnt").textContent=`${rs.length.toLocaleString()} ${rs.length===1?"person":"people"} shown`;
     table(tp.querySelector(".tw"), rs, cols, {sort: st.sel || (st.onlyConcern?"concern":"total")}); };
   tp.querySelector(".af").addEventListener("input",draw);
   tp.querySelector(".zero").addEventListener("change",e=>{ st.showZero=e.target.checked; draw(); });
   tp.querySelector(".dsel").addEventListener("change",e=>{ st.deptSel=e.target.value; draw(); });
+  tp.querySelector(".csel").addEventListener("change",e=>{ st.campusSel=e.target.value; st.deptSel=""; renderStaff(); });
   tp.querySelector(".concern").addEventListener("change",e=>{ st.onlyConcern=e.target.checked; draw(); });
   tp.addEventListener("click",e=>{ const b=e.target.closest("button.prof"); if(!b) return;
     const a=S.authors.get(b.dataset.id); S.picked.author=[{id:b.dataset.id,name:a?.display_name||b.dataset.id,hint:st.inst.name}];
     drawPicked("author","#pickedAuthor",true); showTab("author"); run(doAuthor); });
   tp.querySelector(".dl").onclick=()=>download(`staff_${slug(st.inst.name)}${st.sel?"_"+st.sel:""}.csv`, toCSV(rows(), [
-    ...authorCSVBase, {k:"dept",h:"department"}, {k:"college",h:"college_or_faculty"}, {k:"total",h:"papers_in_range"}, ...STAFF_TIERS.map(t=>({k:t,h:"papers_"+slug(TIER[t].label).replace(/-/g,"_")})),
+    ...authorCSVBase, {k:"dept",h:"department"}, {k:"college",h:"college_or_faculty"}, {k:"campus",h:"campus"}, {k:"total",h:"papers_in_range"}, ...STAFF_TIERS.map(t=>({k:t,h:"papers_"+slug(TIER[t].label).replace(/-/g,"_")})),
     {k:"pctTop",h:"share_high_or_established",csv:r=>r.pctTop==null?"":(100*r.pctTop).toFixed(1)+"%"},{k:"works",h:"total_works_all_time"},{k:"h",h:"h_index"}]));
   draw();
 }
@@ -1641,6 +1680,20 @@ function renderIncent(){
   const claims=incState.works.map(screenWork);
   const people=computePayments(claims);
   incState.claims=claims; incState.people=people;
+  // department + campus per paper and per paid staff member
+  const iId=R.institution?.id, iName=R.institution?.name;
+  const pIdx=deptIndex(incState.works, iId, iName);
+  for(const c of claims){
+    c.adepts=c.auths.map(a=>{ if(!a.aff) return {dept:"",college:"",campus:""}; const d=paperDept(a,iId,iName), pi=a.author?.id?pIdx.get(sid(a.author.id)):null;
+      return {dept:d.dept||pi?.dept||"", college:d.college||pi?.college||"", campus:d.campus||pi?.campus||""}; });
+    c.depts=[...new Set(c.adepts.map(x=>x.dept).filter(Boolean))];
+    const cs=[...new Set(c.adepts.map(x=>x.campus).filter(Boolean))]; c.campuses=cs.length?cs:[NOT_STATED];
+  }
+  for(const pr of people){ const pi=pr.id?pIdx.get(pr.id):null; const it=pr.items[0]; const ad=it?.claim.adepts?.[it.i]||{};
+    pr.dept=pi?.dept||ad.dept||""; pr.college=pi?.college||ad.college||""; pr.campus=pi?.campus||ad.campus||NOT_STATED; }
+  if(incState.campus===undefined){ incState.campus=""; incState.dept=""; }
+  const campusOk=c=>(!incState.campus||c.campuses.includes(incState.campus))&&(!incState.dept||c.depts.includes(incState.dept));
+  const personOk=pr=>(!incState.campus||pr.campus===incState.campus)&&(!incState.dept||pr.dept===incState.dept);
   const n=s=>claims.filter(c=>c.final===s).length;
   const total=people.reduce((s,p)=>s+p.paid,0);
   const pending=claims.filter(c=>c.final==="review");
@@ -1669,22 +1722,26 @@ function renderIncent(){
   const tp=document.createElement("div"); tp.className="panel";
   tp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Papers</h2><span class="grow"></span>
     <div class="chips">${[["all","All"],["eligible","Eligible"],["approved","Approved"],["review","Needs review"],["rejected","Not eligible"]].map(([k,l])=>`<button class="small" data-f="${k}" aria-pressed="${incState.filter===k}">${l}</button>`).join("")}</div>
+    <select class="icsel" style="max-width:190px"><option value="">All campuses</option>${campusOptions(claims.flatMap(c=>c.campuses)).map(c=>`<option ${incState.campus===c?"selected":""}>${esc(c)}</option>`).join("")}</select>
+    <select class="idsel" style="max-width:240px"><option value="">All departments</option>${[...new Set(claims.filter(c=>!incState.campus||c.campuses.includes(incState.campus)).flatMap(c=>c.depts))].sort((a,b)=>a.localeCompare(b)).map(d=>`<option ${incState.dept===d?"selected":""}>${esc(d)}</option>`).join("")}</select>
     <input class="pf" placeholder="filter by title, journal, author…" style="width:220px" value="${esc(incState.q)}"></div>
-    <p class="small muted" style="margin:0 0 8px">Index columns: <span class="ck"><span class="y">✓</span></span> found · <span class="ck"><span class="n">✗</span></span> not found · <span class="ck"><span class="q">?</span></span> can't be checked automatically. “Needs review” items can be approved or rejected here; decisions are kept in this browser and recorded on the form.</p><div class="tw"></div>`;
+    <p class="small muted" style="margin:0 0 8px">Index columns: <span class="ck"><span class="y">✓</span></span> found · <span class="ck"><span class="n">✗</span></span> not found · <span class="ck"><span class="q">?</span></span> can't be checked automatically. “Needs review” items can be approved or rejected here; decisions are kept in this browser and recorded on the form. The campus and department filters also apply to the payments table; caps are always worked out across all of a person's papers.</p><div class="tw"></div>`;
   out.appendChild(tp);
   const cols=[
     {k:"final",h:"Status",sortv:r=>({rejected:0,review:1,approved:2,eligible:3})[r.final],html:r=>`${stTag(r.final)}${r.decision?`<div class="flagnote">manual decision (was ${esc(r.status)})</div>`:""}<div class="flagnote">${esc((r.fails.length?r.fails:r.review).join(" · "))}</div>${r.final==="review"||r.decision?`<div style="margin-top:4px"><button class="small" data-dec="approved" data-id="${r.id}">Approve</button> <button class="small" data-dec="rejected" data-id="${r.id}">Reject</button>${r.decision?` <button class="small" data-dec="" data-id="${r.id}">Undo</button>`:""}</div>`:""}`},
-    {k:"title",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name||r.w.title)}</a>`:esc(r.w.display_name||r.w.title)}<div class="flagnote">${esc(r.w.publication_date||"")} · ${esc(r.type)} · ${r.auths.length} authors (${r.nAff} affiliated)${r.w._viaText?" · found via affiliation text":""}</div>`},
+    {k:"title",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name||r.w.title)}</a>`:esc(r.w.display_name||r.w.title)}<div class="flagnote">${esc(r.w.publication_date||"")} · ${esc(r.type)} · ${r.auths.length} authors (${r.nAff} affiliated)${r.w._viaText?" · found via affiliation text":""}</div>${r.campuses[0]!==NOT_STATED||r.depts.length?`<div class="flagnote">${esc([r.campuses.filter(x=>x!==NOT_STATED).join(", "), r.depts.join(", ")].filter(Boolean).join(" · "))}</div>`:""}`},
     {k:"journal",h:"Journal",sortv:r=>r.src?.display_name||"",html:r=>`${esc(r.src?.display_name||"—")}<div class="flagnote">${esc(r.src?.host_organization_name||"")}</div>${r.src?tierTag(r.tier):""}`},
     {k:"ix",h:"Scopus · WoS · PubMed",sortv:r=>r.indexed?1:0,html:r=>`<span class="ck">${ckCell(r.ix.scopus)} ${ckCell(r.ix.wos)} ${ckCell(r.ix.pubmed)}</span>${r.national?`<div class="flagnote">on national list</div>`:""}`},
     {k:"cat",h:"Category",sortv:r=>r.cat?.label||"",html:r=>r.cat?`${esc(r.cat.label)}<div class="flagnote">${esc(money(r.cat.rate||0))}/paper</div>`:"—"},
     {k:"payout",h:"Payout",num:true,sortv:r=>r.pay.reduce((s,x)=>s+x,0),html:r=>{ const t=r.pay.reduce((s,x)=>s+x,0); return t?esc(money(t)):"—"; }},
     {k:"_f",h:"",html:r=>`<button class="small" data-form="${r.id}">Form</button>`},
   ];
-  const rows=()=>{ const q=norm(incState.q); return claims.filter(c=>(incState.filter==="all"||c.final===incState.filter)&&(!q||norm([c.w.display_name,c.src?.display_name,...c.auths.map(a=>a.author?.display_name)].join(" ")).includes(q))); };
+  const rows=()=>{ const q=norm(incState.q); return claims.filter(c=>campusOk(c)&&(incState.filter==="all"||c.final===incState.filter)&&(!q||norm([c.w.display_name,c.src?.display_name,...c.auths.map(a=>a.author?.display_name)].join(" ")).includes(q))); };
   const draw=()=>table(tp.querySelector(".tw"), rows(), cols, {sort:"final", dir:1});
   tp.querySelector(".pf").addEventListener("input",e=>{ incState.q=e.target.value; draw(); });
   tp.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ incState.filter=b.dataset.f; renderIncent(); });
+  tp.querySelector(".icsel").addEventListener("change",e=>{ incState.campus=e.target.value; incState.dept=""; renderIncent(); });
+  tp.querySelector(".idsel").addEventListener("change",e=>{ incState.dept=e.target.value; renderIncent(); });
   tp.addEventListener("click",e=>{
     const d=e.target.closest("[data-dec]"); if(d){ if(d.dataset.dec) S.decisions.set(d.dataset.id,d.dataset.dec); else S.decisions.delete(d.dataset.id); saveDecisions(); renderIncent(); return; }
     const f=e.target.closest("[data-form]"); if(f) openForms([claims.find(c=>c.id===f.dataset.form)]);
@@ -1693,11 +1750,13 @@ function renderIncent(){
 
   // payments
   const pp=document.createElement("div"); pp.className="panel";
-  pp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Payments by staff member</h2><span class="grow"></span></div>
+  const shownPeople=people.filter(personOk);
+  pp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Payments by staff member${incState.campus||incState.dept?` — ${esc([incState.campus,incState.dept].filter(Boolean).join(" · "))}`:""}</h2><span class="grow"></span>${incState.campus||incState.dept?`<span class="small"><b>${esc(money(shownPeople.reduce((s,x)=>s+x.paid,0)))}</b> to ${shownPeople.filter(x=>x.paid>0).length} staff</span>`:""}</div>
     <p class="small muted" style="margin:0 0 8px">Per-author caps apply per category (most valuable papers first). Shares for authors outside the institution ${R.payOnlyAffiliated?"are not paid":"are included"}.</p><div class="tw"></div>`;
   out.appendChild(pp);
-  table(pp.querySelector(".tw"), people, [
+  table(pp.querySelector(".tw"), shownPeople, [
     {k:"name",h:"Staff member",html:r=>`${r.id?`<a href="https://openalex.org/${r.id}" target="_blank" rel="noopener">${esc(r.name)}</a>`:esc(r.name)}${r.orcid?`<div class="flagnote">${esc(r.orcid)}</div>`:""}`},
+    {k:"dept",h:"Department / campus",sortv:r=>r.dept||"~",html:r=>`${r.dept||r.college?esc(r.dept||r.college):`<span class="muted small">not stated</span>`}${r.campus!==NOT_STATED?`<div class="flagnote"><b>${esc(r.campus)}</b></div>`:""}`},
     {k:"nPaid",h:"Papers paid",num:true},
     {k:"over",h:"Over cap",num:true},
     {k:"detail",h:"Breakdown",sortv:r=>r.items.length,html:r=>`<span class="small">${r.items.map(it=>`${esc(it.cat.label)}: ${esc(money(it.amt))}${it.paid?"":" (over cap)"}`).join("<br>")}</span>`},
@@ -1709,12 +1768,12 @@ function renderIncent(){
     {k:"id",h:"openalex_id"},{k:"doi",h:"doi"},{k:"t",h:"title",csv:r=>r.w.display_name},{k:"d",h:"publication_date",csv:r=>r.w.publication_date},{k:"type",h:"type"},
     {k:"j",h:"journal",csv:r=>r.src?.display_name||""},{k:"pub",h:"publisher",csv:r=>r.src?.host_organization_name||""},{k:"issn",h:"issn_l",csv:r=>r.src?.issn_l||""},
     {k:"tier",h:"journal_tier",csv:r=>TIER[r.tier]?.label||""},{k:"sc",h:"scopus",csv:r=>r.ix.scopus},{k:"wos",h:"wos",csv:r=>r.ix.wos},{k:"pm",h:"pubmed",csv:r=>r.ix.pubmed},
-    {k:"cat",h:"category",csv:r=>r.cat?.label||""},{k:"rate",h:"rate",csv:r=>r.cat?.rate??""},{k:"status",h:"automatic_status"},{k:"decision",h:"manual_decision",csv:r=>r.decision||""},{k:"final",h:"final_status"},
+    {k:"cat",h:"category",csv:r=>r.cat?.label||""},{k:"rate",h:"rate",csv:r=>r.cat?.rate??""},{k:"campus",h:"campus",csv:r=>r.campuses.join("; ")},{k:"depts",h:"departments",csv:r=>r.depts.join("; ")},{k:"status",h:"automatic_status"},{k:"decision",h:"manual_decision",csv:r=>r.decision||""},{k:"final",h:"final_status"},
     {k:"why",h:"reasons",csv:r=>[...r.fails,...r.review].join("; ")},{k:"na",h:"authors",csv:r=>r.auths.length},{k:"nAff",h:"affiliated_authors"},
     {k:"payout",h:"payout",csv:r=>r.pay.reduce((s,x)=>s+x,0)},
   ]));
-  $("#incCsvPay").onclick=()=>download(`incentive_payments_${slug(R.institution?.name||R.affText)}.csv`, toCSV(people.flatMap(p=>p.items.map(it=>({p,it}))), [
-    {k:"n",h:"staff_member",csv:r=>r.p.name},{k:"o",h:"orcid",csv:r=>r.p.orcid},{k:"oa",h:"openalex_id",csv:r=>r.p.id},
+  $("#incCsvPay").onclick=()=>download(`incentive_payments_${slug(R.institution?.name||R.affText)}${incState.campus?"_"+slug(incState.campus):""}${incState.dept?"_"+slug(incState.dept):""}.csv`, toCSV(shownPeople.flatMap(p=>p.items.map(it=>({p,it}))), [
+    {k:"n",h:"staff_member",csv:r=>r.p.name},{k:"o",h:"orcid",csv:r=>r.p.orcid},{k:"oa",h:"openalex_id",csv:r=>r.p.id},{k:"dp",h:"department",csv:r=>r.p.dept},{k:"cp",h:"campus",csv:r=>r.p.campus},
     {k:"doi",h:"doi",csv:r=>r.it.claim.doi},{k:"t",h:"title",csv:r=>r.it.claim.w.display_name},{k:"c",h:"category",csv:r=>r.it.cat.label},
     {k:"pos",h:"author_position",csv:r=>r.it.i+1},{k:"pct",h:"share_pct",csv:r=>r.it.claim.pcts[r.it.i]},{k:"a",h:"amount",csv:r=>Math.round(r.it.amt*100)/100},{k:"paid",h:"within_cap",csv:r=>r.it.paid?"yes":"no"},
     {k:"cur",h:"currency",csv:()=>R.currency},
@@ -1729,8 +1788,8 @@ function formHTML(c){
   const chk=(label,res,evidence)=>`<tr><td>${esc(label)}</td><td><b>${esc(res)}</b></td><td>${evidence}</td></tr>`;
   const ixTxt=v=>v==="y"?"Yes":v==="n"?"Not found":"Verify manually";
   const authorRows=c.auths.map((a,i)=>{
-    const pd=a.aff ? paperDept(a, R.institution?.id, R.institution?.name) : {dept:"",college:""};
-    const inst=[(a.institutions||[]).map(x=>x.display_name).join("; ") || (a.raw_affiliation_strings||[])[0] || "", pd.college].filter(Boolean).join(" — ");
+    const pd=a.aff ? (c.adepts?.[i] || paperDept(a, R.institution?.id, R.institution?.name)) : {dept:"",college:"",campus:""};
+    const inst=[(a.institutions||[]).map(x=>x.display_name).join("; ") || (a.raw_affiliation_strings||[])[0] || "", pd.campus, pd.college].filter(Boolean).join(" — ");
     return `<tr><td>${i+1}${a.is_corresponding?"*":""}</td><td>${esc(a.author?.display_name||"")}<div class="meta">${esc(String(a.author?.orcid||"").replace(/^https?:\/\/orcid\.org\//,""))}</div></td>
       <td></td><td></td><td>${esc(inst)}</td><td>${esc(pd.dept)}</td><td>${a.aff?"Yes":"No"}</td><td></td><td>${esc(String(c.pcts[i]??"").replace(/(\.\d\d)\d+/,"$1"))}%</td><td>${c.pay[i]?esc(money(c.pay[i])):(((c.final==="eligible"||c.final==="approved")&&(a.aff||!R.payOnlyAffiliated)&&c.cat)?"0 (over per-author cap)":"—")}</td><td></td><td></td></tr>`;
   }).join("");
@@ -2017,17 +2076,50 @@ function rankingPanel(rows, st){
 
 function renderMgmt(){
   const out=$("#mgmtOut"); if(!mgmtState) return;
-  const st=mgmtState; const rows=st.works.map(assessWork); st.rows=rows;
+  const st=mgmtState; const allRows=st.works.map(assessWork);
+  // department + campus of every paper, from the addresses its affiliated authors printed
+  const instId=R.institution?.id, instName=R.institution?.name;
+  const dIdx=deptIndex(st.works, instId, instName);
+  for(const r of allRows){
+    const ds=new Set(), cs=new Set();
+    for(const a of r.auths.filter(a=>a.aff)){
+      const p=paperDept(a,instId,instName), pi=a.author?.id ? dIdx.get(sid(a.author.id)) : null;
+      const d=p.dept||pi?.dept||""; if(d) ds.add(d);
+      const c=p.campus||pi?.campus||""; if(c) cs.add(c);
+    }
+    r.depts=[...ds]; r.campuses=cs.size?[...cs]:[NOT_STATED];
+  }
+  if(st.fCampus===undefined){ st.fCampus=""; st.fDept=""; }
+  const rows=allRows.filter(r=>(!st.fCampus||r.campuses.includes(st.fCampus))&&(!st.fDept||r.depts.includes(st.fDept)));
+  st.rows=rows;
   const P=rows.length, cnt=f=>rows.filter(f).length;
   const withF=rows.filter(r=>r.fwci!=null);
   const recentCut=new Date().getFullYear()-1;
   out.innerHTML="";
 
+  // Filter bar: campus + department re-scope the whole dashboard
+  const fb=document.createElement("div"); fb.className="panel"; fb.id="mgmtFilters";
+  const cCount=new Map(); for(const r of allRows) for(const c of r.campuses) cCount.set(c,(cCount.get(c)||0)+1);
+  const inCampus=allRows.filter(r=>!st.fCampus||r.campuses.includes(st.fCampus));
+  const dCount=new Map(); for(const r of inCampus) for(const d of r.depts) dCount.set(d,(dCount.get(d)||0)+1);
+  if(st.fDept && !dCount.has(st.fDept)) st.fDept="";
+  fb.innerHTML=`<div class="row" style="align-items:flex-end">
+      <label class="f">Campus<select class="fc" style="min-width:210px"><option value="">All campuses (${allRows.length.toLocaleString()} papers)</option>${campusOptions([...cCount.keys()]).map(c=>`<option value="${esc(c)}" ${st.fCampus===c?"selected":""}>${esc(c)} (${cCount.get(c).toLocaleString()})</option>`).join("")}</select></label>
+      <label class="f">Department<select class="fd" style="min-width:280px;max-width:420px"><option value="">All departments</option>${[...dCount.keys()].sort((a,b)=>a.localeCompare(b)).map(d=>`<option value="${esc(d)}" ${st.fDept===d?"selected":""}>${esc(d)} (${dCount.get(d)})</option>`).join("")}</select></label>
+      ${st.fCampus||st.fDept?`<button class="small clr">Clear filters</button>`:""}
+      <span class="small muted" style="flex:1;min-width:260px">Everything below follows these filters. Campus and department are read from the addresses printed on the papers; a paper counts for a campus when any of its authors from the institution names that campus.</span>
+    </div>`;
+  const refilter=()=>{ renderMgmt(); document.getElementById("mgmtFilters")?.scrollIntoView({block:"start"}); window.scrollBy(0,-70); };
+  fb.querySelector(".fc").onchange=e=>{ st.fCampus=e.target.value; refilter(); };
+  fb.querySelector(".fd").onchange=e=>{ st.fDept=e.target.value; refilter(); };
+  fb.querySelector(".clr")?.addEventListener("click",()=>{ st.fCampus=""; st.fDept=""; refilter(); });
+  out.appendChild(fb);
+
   // KPIs
   const k=document.createElement("div"); k.className="panel";
   const dmuEligible=rows.filter(r=>r.dmuOk);
   const dmuValue=dmuEligible.reduce((s,r)=>s+(r.cat?.rate||0)*r.auths.reduce((t,a,i)=>t+((!R.payOnlyAffiliated||a.aff)?(r.pcts[i]||0):0),0)/100,0);
-  k.innerHTML=`<div class="card"><span class="big">${esc(R.institution.name)}</span><span class="kv"><span><b>${st.y0}–${st.y1}</b></span><span>Data: OpenAlex, ${st.at.toLocaleString()}</span><span>Rules: ${esc(R.name)}</span></span></div>
+  k.innerHTML=`<div class="card"><span class="big">${esc([R.institution.name, st.fCampus, st.fDept].filter(Boolean).join(" · "))}</span><span class="kv"><span><b>${st.y0}–${st.y1}</b></span><span>Data: OpenAlex, ${st.at.toLocaleString()}</span><span>Rules: ${esc(R.name)}</span></span></div>
     ${st.capped?`<div class="warnbox">Stopped at the “Max papers” limit — raise it or narrow the years for complete figures.</div>`:""}
     <div class="kpis">
       <div class="kpi"><div class="n">${P.toLocaleString()}</div><div class="l">publications (P)</div><div class="sub">${cnt(r=>r.w._viaText)} found only via affiliation text</div></div>
@@ -2072,10 +2164,6 @@ function renderMgmt(){
   out.appendChild(fp);
   out.appendChild(rankingPanel(rows, st));
 
-  // Departments (from the address strings on each paper)
-  const instId=R.institution?.id, instName=R.institution?.name;
-  const dIdx=deptIndex(st.works, instId, instName);
-  for(const r of rows) r.depts=[...new Set(r.auths.filter(a=>a.aff).map(a=>{ const p=paperDept(a,instId,instName); return p.dept || (a.author?.id ? dIdx.get(sid(a.author.id))?.dept : "") || ""; }).filter(Boolean))];
 
   // Researchers
   const rp=document.createElement("div"); rp.className="panel";
@@ -2085,7 +2173,35 @@ function renderMgmt(){
   const pRows=[...ppl.values()].map(o=>{ const rs=o.rs.map(x=>x.r); const n=rs.length; const b={}; for(const B of BANDS) b[B.id]=rs.filter(r=>r.band===B.id).length;
     return {...o, P:n, top10:rs.filter(r=>r.top10).length, fwci:median(rs.map(r=>r.fwci)), intl:rs.filter(r=>r.intl).length/n,
       ledN:o.rs.filter(x=>x.r.led && (x.r.w.corresponding_institution_ids?.length ? (x.r.auths[x.i].is_corresponding) : x.i===0)).length,
-      risk:b.risk, dmu:rs.filter(r=>r.dmuOk).length, bands:b, dept:dIdx.get(o.id)?.dept||"", college:dIdx.get(o.id)?.college||""}; });
+      risk:b.risk, dmu:rs.filter(r=>r.dmuOk).length, bands:b, dept:dIdx.get(o.id)?.dept||"", college:dIdx.get(o.id)?.college||"", campus:dIdx.get(o.id)?.campus||NOT_STATED}; })
+    .filter(pr=>(!st.fCampus||pr.campus===st.fCampus)&&(!st.fDept||pr.dept===st.fDept));
+
+  // By campus (respects the department filter, ignores the campus filter so campuses can be compared)
+  const inDept=allRows.filter(r=>!st.fDept||r.depts.includes(st.fDept));
+  const cmap=new Map();
+  for(const r of inDept) for(const c of r.campuses){ const o=cmap.get(c)||{campus:c,papers:[],people:new Set()}; o.papers.push(r); for(const a of r.auths) if(a.aff&&a.author?.id&&(dIdx.get(sid(a.author.id))?.campus||NOT_STATED)===c) o.people.add(sid(a.author.id)); cmap.set(c,o); }
+  const cRows=[...cmap.values()].map(o=>({campus:o.campus, people:o.people.size, P:o.papers.length, top10:o.papers.filter(r=>r.top10).length/o.papers.length,
+    fwci:median(o.papers.map(r=>r.fwci)), risk:o.papers.filter(r=>r.band==="risk").length, dmu:o.papers.filter(r=>r.dmuOk).length}));
+  if(cRows.length){
+    const cp=document.createElement("div"); cp.className="panel"; cp.id="mgmtCampus";
+    const notStated=cmap.get(NOT_STATED)?.papers.length||0;
+    cp.innerHTML=`<div class="toolbar"><h2 style="margin:0">By campus</h2><span class="grow"></span><button class="small dl">Download CSV</button></div>
+      <p class="small muted" style="margin:0 0 8px">Read from the addresses on the papers${S.campusMap.size?" and your campus list in Setup":""}. ${notStated?`${notStated.toLocaleString()} paper${notStated===1?" names":"s name"} no campus; asking staff to write their campus in their affiliation fixes this, and Setup lets you assign departments to a campus. `:""}Select a campus to filter the whole dashboard.</p><div class="tw"></div>`;
+    const maxC=Math.max(1,...cRows.map(r=>r.P));
+    table(cp.querySelector(".tw"), cRows, [
+      {k:"campus",h:"Campus",sortv:r=>r.campus===NOT_STATED?"~":r.campus,html:r=>`<a href="#mgmtFilters" data-campus="${esc(r.campus)}">${esc(r.campus)}</a>${st.fCampus===r.campus?` <span class="muted small">(selected)</span>`:""}`},
+      {k:"people",h:"Researchers",num:true},
+      {k:"P",h:"Papers",num:true,html:r=>`<span class="inbar" style="width:${Math.max(2,60*r.P/maxC)}px"></span>${r.P}`},
+      {k:"top10",h:"Top 10% share",num:true,html:r=>(100*r.top10).toFixed(1)+"%"},
+      {k:"fwci",h:"Median FWCI",num:true},
+      {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">${r.risk}</b>`:`<span class="muted">0</span>`},
+      {k:"dmu",h:"Reward-eligible",num:true},
+    ], {sort:"P"});
+    cp.querySelector(".dl").onclick=()=>download(`campuses_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(cRows, [
+      {k:"campus",h:"campus"},{k:"people",h:"researchers"},{k:"P",h:"papers"},{k:"top10",h:"top10_share",csv:r=>(100*r.top10).toFixed(1)},{k:"fwci",h:"median_fwci"},{k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
+    cp.addEventListener("click",e=>{ const a=e.target.closest("[data-campus]"); if(!a) return; e.preventDefault(); st.fCampus=a.dataset.campus; refilter(); });
+    out.appendChild(cp);
+  }
 
   // By department
   const dmap=new Map();
@@ -2098,7 +2214,7 @@ function renderMgmt(){
   if(!st.dept) st.dept="";
   const dp=document.createElement("div"); dp.className="panel"; dp.id="mgmtDept";
   dp.innerHTML=`<div class="toolbar"><h2 style="margin:0">By department</h2><span class="grow"></span><button class="small dl">Download CSV</button></div>
-    <p class="small muted" style="margin:0 0 8px">Read from the addresses authors print on their papers. ${unknownPapers?`${unknownPapers.toLocaleString()} paper${unknownPapers===1?"":"s"} name no department and are not counted here. `:""}Select a department to filter the researchers below.</p><div class="tw"></div>`;
+    <p class="small muted" style="margin:0 0 8px">Read from the addresses authors print on their papers. ${unknownPapers?`${unknownPapers.toLocaleString()} paper${unknownPapers===1?"":"s"} name no department and are not counted here. `:""}Select a department to filter the whole dashboard.</p><div class="tw"></div>`;
   const maxDP=Math.max(1,...dRows.map(r=>r.P));
   table(dp.querySelector(".tw"), dRows, [
     {k:"dept",h:"Department",html:r=>`<a href="#mgmtResearchers" data-dept="${esc(r.dept)}">${esc(r.dept)}</a>${r.college?`<div class="flagnote">${esc(r.college)}</div>`:""}`},
@@ -2112,12 +2228,12 @@ function renderMgmt(){
   dp.querySelector(".dl").onclick=()=>download(`departments_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(dRows, [
     {k:"dept",h:"department"},{k:"college",h:"college_or_faculty"},{k:"people",h:"researchers"},{k:"P",h:"papers"},
     {k:"top10",h:"top10_share",csv:r=>(100*r.top10).toFixed(1)},{k:"fwci",h:"median_fwci"},{k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
-  dp.addEventListener("click",e=>{ const a=e.target.closest("[data-dept]"); if(!a) return; e.preventDefault(); st.dept=a.dataset.dept; const sel=rp.querySelector(".dsel"); if(sel){ sel.value=st.dept; } rDraw(); rp.scrollIntoView({behavior:"smooth"}); });
+  dp.addEventListener("click",e=>{ const a=e.target.closest("[data-dept]"); if(!a) return; e.preventDefault(); st.fDept=a.dataset.dept; refilter(); });
   if(dRows.length) out.appendChild(dp);
   rp.id="mgmtResearchers";
   rp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Researchers</h2><span class="grow"></span>
     <label class="small"><input type="checkbox" class="rk"> only people with ⚠ risk papers</label>
-    <select class="dsel" style="max-width:260px"><option value="">All departments</option>${deptOptions(pRows).map(d=>`<option ${st.dept===d?"selected":""}>${esc(d)}</option>`).join("")}</select>
+
     <input class="af" placeholder="filter by name…" style="width:180px"><button class="small dl">Download CSV</button></div>
     <p class="small muted" style="margin:0 0 8px">Affiliated authors on the papers above. Per the Leiden Manifesto and DORA, use these figures to start conversations and spot integrity issues — not to rank or reward individuals on metrics alone.</p><div class="tw"></div>`;
   const rCols=[
@@ -2132,12 +2248,12 @@ function renderMgmt(){
     {k:"risk",h:"⚠ Risk",num:true,html:r=>r.risk?`<b style="color:var(--b-risk)">⚠ ${r.risk}</b>`:`<span class="muted">0</span>`},
     {k:"dmu",h:"Reward-eligible",num:true},
   ];
-  const rRows=()=>{ const q=norm(rp.querySelector(".af").value), rk=rp.querySelector(".rk").checked; return pRows.filter(r=>(!rk||r.risk)&&(!st.dept||r.dept===st.dept)&&(!q||norm(r.name+" "+r.dept+" "+r.college).includes(q))); };
+  const rRows=()=>{ const q=norm(rp.querySelector(".af").value), rk=rp.querySelector(".rk").checked; return pRows.filter(r=>(!rk||r.risk)&&(!q||norm(r.name+" "+r.dept+" "+r.college+" "+r.campus).includes(q))); };
   const rDraw=()=>table(rp.querySelector(".tw"), rRows(), rCols, {sort:"P"});
   rp.querySelector(".af").addEventListener("input",rDraw); rp.querySelector(".rk").addEventListener("change",rDraw);
-  rp.querySelector(".dsel").addEventListener("change",e=>{ st.dept=e.target.value; rDraw(); }); rDraw();
+  rDraw();
   rp.querySelector(".dl").onclick=()=>download(`researchers_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(rRows(), [
-    {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"dept",h:"department"},{k:"college",h:"college_or_faculty"},{k:"P",h:"papers"},
+    {k:"id",h:"openalex_id"},{k:"name",h:"name"},{k:"orcid",h:"orcid"},{k:"dept",h:"department"},{k:"college",h:"college_or_faculty"},{k:"campus",h:"campus"},{k:"P",h:"papers"},
     ...BANDS.map(b=>({k:"b_"+b.id,h:"band_"+b.id,csv:r=>r.bands[b.id]})),{k:"top10",h:"top10_papers"},{k:"fwci",h:"median_fwci"},
     {k:"intl",h:"international_share",csv:r=>(100*r.intl).toFixed(1)},{k:"ledN",h:"as_corresponding"},{k:"risk",h:"risk_papers"},{k:"dmu",h:"reward_eligible"}]));
   out.appendChild(rp);
@@ -2161,7 +2277,7 @@ function renderMgmt(){
     <input class="pf" placeholder="filter by title, journal, author…" style="width:240px" value="${esc(st.q)}"><button class="small dl">Download CSV</button></div><div class="tw"></div>`;
   const pCols=[
     {k:"band",h:"Band",sortv:r=>["risk","unv","std","str","exc"].indexOf(r.band),html:r=>bandTag(r.band)+(r.riskWhy.length?`<div class="flagnote">${esc(r.riskWhy.join("; "))}</div>`:"")},
-    {k:"t",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name)}</a>`:esc(r.w.display_name)}<div class="flagnote">${esc(String(r.year))} · ${esc(r.type)} · ${esc(r.field)}${r.w._viaText?" · via affiliation text":""}</div>`},
+    {k:"t",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name)}</a>`:esc(r.w.display_name)}<div class="flagnote">${esc(String(r.year))} · ${esc(r.type)} · ${esc(r.field)}${r.w._viaText?" · via affiliation text":""}${r.campuses&&r.campuses[0]!==NOT_STATED?" · "+esc(r.campuses.join(", ")):""}</div>`},
     {k:"j",h:"Journal",sortv:r=>r.src?.display_name||"",html:r=>`${esc(r.src?.display_name||"—")}${r.src?`<div>${tierTag(r.tier)}</div>`:""}`},
     {k:"lv",h:"Channel level",sortv:r=>({2:3,1:2,0:1,X:0})[r.lv?.lvl]??-1,html:r=>`${lvlTag(r.lv?.lvl, r.lv?.source)}<div class="flagnote">${esc(r.lv?.source||"")}</div>`},
     {k:"fwci",h:"FWCI",num:true},
@@ -2183,7 +2299,7 @@ function renderMgmt(){
     {k:"intl",h:"international",csv:r=>r.intl?"yes":"no"},{k:"led",h:"institution_led",csv:r=>r.led?"yes":"no"},{k:"oa",h:"open_access",csv:r=>r.oa?"yes":"no"},
     {k:"sc",h:"scopus",csv:r=>r.ix.scopus},{k:"pm",h:"pubmed",csv:r=>r.ix.pubmed},{k:"wos",h:"wos",csv:r=>r.ix.wos},
     {k:"dmu",h:"reward_category",csv:r=>r.dmuOk?r.cat.label:""},{k:"st",h:"reward_status",csv:r=>r.status},{k:"why",h:"reward_reasons",csv:r=>[...r.fails,...r.review].join("; ")},
-    {k:"nAff",h:"affiliated_authors"},{k:"aa",h:"affiliated_author_names",csv:r=>r.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join("; ")},{k:"depts",h:"departments",csv:r=>(r.depts||[]).join("; ")},
+    {k:"nAff",h:"affiliated_authors"},{k:"aa",h:"affiliated_author_names",csv:r=>r.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join("; ")},{k:"depts",h:"departments",csv:r=>(r.depts||[]).join("; ")},{k:"campuses",h:"campus",csv:r=>(r.campuses||[]).join("; ")},
   ]));
   pDraw();
   out.appendChild(pp);
@@ -2240,7 +2356,12 @@ function init(){
   keyNote();
   for(const id of ["tHigh","tSolid","tLow","tVol"]){ const v=store.get(id); if(v) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>{ store.set(id,e.target.value); rerender(); }); }
   for(const id of ["y0","y1","wtype"]){ const v=store.get(id); if(v!==null) $("#"+id).value=v; $("#"+id).addEventListener("change",e=>store.set(id,e.target.value)); }
-  loadWatchFromStore(); loadLevels(); watchChanged(); levelsChanged();
+  loadWatchFromStore(); loadLevels();
+  { const t=store.get("campusMap")||""; $("#campusMap").value=t; S.campusMap=parseCampusMap(t);
+    let tm=null; const upd=()=>{ S.campusMap=parseCampusMap($("#campusMap").value); store.set("campusMap",$("#campusMap").value);
+      $("#campusInfo").textContent=S.campusMap.size?`${S.campusMap.size} department/college assignment${S.campusMap.size===1?"":"s"} in use.`:""; };
+    upd(); $("#campusMap").addEventListener("input",()=>{ clearTimeout(tm); tm=setTimeout(()=>{ upd(); rerender(); },500); }); }
+  watchChanged(); levelsChanged();
   for(const [id,key] of [["#lvJufo","jufo"],["#lvNor","nor"]]) $(id).addEventListener("change",async e=>{
     const f=e.target.files[0]; if(!f) return; const n=ingestLevels(await f.text(), key);
     levelsChanged(n<0?`Couldn't find ISSN and level columns in ${f.name}.`:`Loaded ${n.toLocaleString()} ISSN levels from ${f.name} (${LV_NAME[key]}).`); e.target.value=""; });
