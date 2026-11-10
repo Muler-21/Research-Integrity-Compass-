@@ -463,6 +463,16 @@ footer.site .am{color:#C5CFDF}
         <button class="primary" id="btnAuthor">Profile</button>
       </div>
       <div class="picked" id="pickedAuthor"></div>
+      <p class="small muted" style="margin:6px 0 0">OpenAlex sometimes splits one person into several profiles (e.g. "M.K. Bitew", "Mulusew Kassa"). Pick every profile that is you and they are combined.</p>
+      <details id="listBox" style="margin-top:10px"><summary><b>Can't find all your papers? Check your own publication list</b></summary>
+        <p class="small muted">Paste anything that contains DOIs: your ORCID works page (select all and copy), a CV, a reference list or a column of DOIs. Each paper is looked up directly and rated, and you can see which OpenAlex profile it is currently credited to. Nothing is stored or sent anywhere except the DOI lookups to OpenAlex.</p>
+        <textarea id="pubList" placeholder="DOI: 10.1016/j.isci.2026.115295&#10;10.1038/s41598-025-30767-y&#10;https://doi.org/10.1002/agg2.70143"></textarea>
+        <div class="row" style="margin-top:6px;align-items:flex-end">
+          <label class="f">Your surname or names as printed on papers (optional, comma-separated)<input id="pubNames" placeholder="e.g. Bitew, Kassa" style="min-width:260px"></label>
+          <label class="f">Your ORCID (optional)<input id="pubOrcid" placeholder="0000-0000-0000-0000" style="width:190px"></label>
+          <button class="primary" id="btnPubList">Check my list</button>
+        </div>
+      </details>
     </div>
     <div id="authorOut"><div class="empty"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><path d="M24 40l4-16h-8z" opacity=".35" fill="currentColor" stroke="none"/></svg><div><b>No researcher selected</b>Type a name or ORCID above, pick the right person from the suggestions, then select Profile.</div></div></div>
   </section>
@@ -1072,15 +1082,16 @@ function renderResearchers(panel, R){
 /* ---------------- AUTHOR view ---------------- */
 let authorState=null;
 async function doAuthor(){
-  const a=S.picked.author[0]; if(!a) throw new Error("Pick a researcher from the suggestions first.");
+  const ps=S.picked.author; if(!ps.length) throw new Error("Pick a researcher from the suggestions first.");
+  const a={...ps[0], ids:ps.map(x=>x.id), name:[...new Set(ps.map(x=>x.name))].join(" + ")};
   setStatus("Loading researcher…");
-  await fetchAuthors([a.id]);
+  await fetchAuthors(a.ids);
   setStatus("Grouping their works by journal…");
-  const f=[...baseFilters(), `author.id:${a.id}`].join(",");
+  const f=[...baseFilters(), `author.id:${a.ids.join("|")}`].join(",");
   const g=await groupBy(f,"primary_location.source.id",2000);
   await fetchSources(g.groups.map(x=>x.id));
   const sum=g.groups.reduce((s,x)=>s+x.count,0);
-  authorState={a, g, none: g.complete&&g.totalWorks!=null?Math.max(0,g.totalWorks-sum):0, sel:null};
+  listState=null; authorState={a, g, none: g.complete&&g.totalWorks!=null?Math.max(0,g.totalWorks-sum):0, sel:null};
   renderAuthor();
 }
 function renderAuthor(){
@@ -1088,10 +1099,10 @@ function renderAuthor(){
   const st=authorState, info=authorInfo(st.a.id), rows=st.g.groups.map(journalRow);
   out.innerHTML="";
   const p=document.createElement("div"); p.className="panel";
-  p.innerHTML=`<div class="card"><span class="big"><a href="https://openalex.org/${st.a.id}" target="_blank" rel="noopener">${esc(st.a.name)}</a></span>
+  p.innerHTML=`<div class="card"><span class="big">${(st.a.ids||[st.a.id]).map(id=>`<a href="https://openalex.org/${id}" target="_blank" rel="noopener">${esc(S.authors.get(id)?.display_name||st.a.name)}</a>`).join(" + ")}</span>${(st.a.ids||[]).length>1?`<span class="small muted">${st.a.ids.length} OpenAlex profiles combined</span>`:""}
     <span class="kv"><span>${esc(info.inst||"")}${info.country?` (${esc(info.country)})`:""}</span>${info.orcid?`<span>ORCID <a href="https://orcid.org/${esc(info.orcid)}" target="_blank" rel="noopener">${esc(info.orcid)}</a></span>`:""}
     <span><b>${(st.g.totalWorks??0).toLocaleString()}</b> works in range</span><span>h-index <b>${fmt(info.h)}</b></span></span></div>
-    <p class="small muted" style="margin:6px 0 0">OpenAlex author profiles can merge or split people with similar names — check the works list on OpenAlex if something looks off.</p>`;
+    <p class="small muted" style="margin:6px 0 0">OpenAlex author profiles can merge or split people with similar names. If papers are missing, add your other profiles above, or use <b>Check your own publication list</b>.</p>`;
   p.appendChild(tierSummary(rows, st.none, t=>{ st.sel=t; renderAuthor(); }, st.sel));
   if(!watchSize()) p.insertAdjacentHTML("beforeend",`<div class="warnbox">No watchlist loaded — open <b>Settings</b> to add one.</div>`);
   out.appendChild(p);
@@ -1101,6 +1112,84 @@ function renderAuthor(){
   out.appendChild(jp);
   table(jp.querySelector(".tw"), shown, journalCols("Their papers"), {sort:"count"});
   jp.querySelector(".dl").onclick=()=>download(`journals_${slug(st.a.name)}.csv`, toCSV(shown, journalCSVCols()));
+}
+
+/* ---------------- OWN PUBLICATION LIST ---------------- */
+function extractDois(text){
+  const out=[], seen=new Set();
+  for(let m of String(text||"").matchAll(/\b10\.\d{4,9}\/[^\s"'<>]+/g)){
+    let d=m[0].replace(/[.,;:)\]}]+$/,"");
+    if((d.match(/\(/g)||[]).length>(d.match(/\)/g)||[]).length) d=d; // keep balanced-paren DOIs as found
+    const k=d.toLowerCase(); if(!seen.has(k)&&!d.includes(",")){ seen.add(k); out.push(d); }
+  }
+  return out;
+}
+let listState=null;
+async function doPubList(){
+  const dois=extractDois($("#pubList").value);
+  if(!dois.length) throw new Error("No DOIs found in the pasted text. DOIs look like 10.1038/s41598-025-30767-y.");
+  const names=$("#pubNames").value.split(/[,;]/).map(x=>norm(x)).filter(x=>x.length>1);
+  const orcid=($("#pubOrcid").value.match(/\d{4}-\d{4}-\d{4}-\d{3}[\dX]/i)||[""])[0].toUpperCase();
+  const works=[];
+  for(let i=0;i<dois.length;i+=40){
+    setStatus(`Looking up DOIs ${i+1}–${Math.min(i+40,dois.length)} of ${dois.length}…`);
+    works.push(...await fetchWorks(`doi:${dois.slice(i,i+40).join("|")}`, 200));
+  }
+  const byDoi=new Map(works.map(w=>[String(w.doi||"").replace(/^https?:\/\/doi\.org\//i,"").toLowerCase(), w]));
+  await fetchSources([...new Set(works.map(w=>sid(w.primary_location?.source?.id||"")).filter(Boolean))]);
+  const rows=dois.map(d=>{ const w=byDoi.get(d.toLowerCase());
+    if(!w) return {doi:d, found:false};
+    const src=w.primary_location?.source; const c=classify(src?S.sources.get(sid(src.id))||src:null);
+    const au=w.authorships||[];
+    let i=au.findIndex(a=>orcid && String(a.author?.orcid||"").toUpperCase().endsWith(orcid));
+    if(i<0 && names.length) i=au.findIndex(a=>{ const n=norm((a.raw_author_name||"")+" "+(a.author?.display_name||"")); return names.some(x=>n.includes(x)); });
+    const me=i>=0?au[i]:null;
+    return {doi:d, found:true, w, title:w.display_name||w.title, year:w.publication_year, journal:src?.display_name||"", tier:c.tier, tierRank:TIER[c.tier].rank,
+      cites:w.cited_by_count??0, nAuth:au.length, pos:i<0?"":i===0?"first":i===au.length-1?"last":"middle", posN:i<0?null:i+1,
+      printed:me?.raw_author_name||"", creditedTo:me?.author?.display_name||"", creditedId:me?.author?.id?sid(me.author.id):"", inst:(me?.institutions||[]).map(x=>x.display_name).join("; ")};
+  });
+  // which profile holds most of the list, and which papers sit elsewhere
+  const cnt=new Map(); for(const r of rows) if(r.creditedId) cnt.set(r.creditedId,(cnt.get(r.creditedId)||0)+1);
+  const main=[...cnt].sort((a,b)=>b[1]-a[1])[0]?.[0]||"";
+  for(const r of rows) r.elsewhere=!!(r.creditedId && main && r.creditedId!==main);
+  if(cnt.size) await fetchAuthors([...cnt.keys()]);
+  authorState=null; listState={rows, dois, names, orcid, main, profiles:[...cnt].sort((a,b)=>b[1]-a[1]), at:new Date()};
+  renderPubList();
+}
+function renderPubList(){
+  const out=$("#authorOut"); if(!listState) return;
+  const st=listState, found=st.rows.filter(r=>r.found), miss=st.rows.filter(r=>!r.found);
+  out.innerHTML="";
+  const p=document.createElement("div"); p.className="panel";
+  const jrows=(()=>{ const m=new Map(); for(const r of found){ const id=sid(r.w.primary_location?.source?.id||""); if(!id) continue; const o=m.get(id)||{id,name:r.journal,count:0}; o.count++; m.set(id,o); } return [...m.values()].map(journalRow); })();
+  const noSrc=found.filter(r=>!r.w.primary_location?.source?.id).length;
+  const pos=k=>found.filter(r=>r.pos===k).length;
+  p.innerHTML=`<div class="card"><span class="big">Your publication list</span><span class="kv"><span><b>${st.dois.length}</b> DOIs pasted</span><span><b>${found.length}</b> found in OpenAlex</span>${miss.length?`<span style="color:var(--caution)"><b>${miss.length}</b> not found</span>`:""}</span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="n">${pos("first")}</div><div class="l">as first author</div></div>
+      <div class="kpi"><div class="n">${pos("middle")}</div><div class="l">as middle author</div></div>
+      <div class="kpi"><div class="n">${pos("last")}</div><div class="l">as last author</div></div>
+      <div class="kpi"><div class="n">${found.reduce((s,r)=>s+r.cites,0).toLocaleString()}</div><div class="l">citations (OpenAlex)</div></div>
+    </div>
+    ${st.profiles.length>1?`<div class="warnbox"><b>Your papers are spread over ${st.profiles.length} OpenAlex profiles:</b> ${st.profiles.map(([id,n])=>`<a href="https://openalex.org/${id}" target="_blank" rel="noopener">${esc(S.authors.get(id)?.display_name||id)}</a> (${n})`).join(" · ")}. This is why a name search shows only part of your work. Claim your profile on <a href="https://openalex.org" target="_blank" rel="noopener">openalex.org</a> and move the papers, or <a href="https://openalex.org/contact" target="_blank" rel="noopener">file a correction</a> listing the DOIs marked "credited elsewhere" below. Corrections flow into RIC automatically.</div>`:""}
+    ${!st.names.length&&!st.orcid?`<p class="small muted">Tip: add your surname above to see your author position and which profile each paper is credited to.</p>`:""}`;
+  p.appendChild(tierSummary(jrows, noSrc, ()=>{}, null));
+  out.appendChild(p);
+  const tp=document.createElement("div"); tp.className="panel";
+  tp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Papers</h2><span class="grow"></span><button class="small dl">Download CSV</button></div><div class="tw"></div>`;
+  out.appendChild(tp);
+  const posLbl=r=>r.pos?`${r.posN} of ${r.nAuth}${r.pos==="first"?" (first)":r.pos==="last"?" (last)":""}`:"—";
+  table(tp.querySelector(".tw"), st.rows, [
+    {k:"title",h:"Paper",sortv:r=>r.title||"~",html:r=>r.found?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.title)}</a><div class="flagnote">${esc(String(r.year||""))} · ${esc(r.journal||"no journal recorded")}${r.w.is_retracted?` · <b style="color:var(--b-risk)">⚠ retracted</b>`:""}</div>`:`<span class="muted">${esc(r.doi)}</span><div class="flagnote" style="color:var(--caution)">not in OpenAlex (yet) — check the DOI, or the publisher may not deposit metadata</div>`},
+    {k:"tier",h:"Journal tier",sortv:r=>r.found?r.tierRank:99,html:r=>r.found?tierTag(r.tier):"—"},
+    {k:"posN",h:"Your position",sortv:r=>r.posN??999,html:posLbl},
+    {k:"credited",h:"Credited in OpenAlex to",sortv:r=>r.creditedTo||"~",html:r=>r.creditedId?`<a href="https://openalex.org/${r.creditedId}" target="_blank" rel="noopener">${esc(r.creditedTo)}</a>${r.printed&&norm(r.printed)!==norm(r.creditedTo)?`<div class="flagnote">printed as "${esc(r.printed)}"</div>`:""}${r.elsewhere?`<div class="flagnote" style="color:var(--caution)"><b>credited elsewhere</b> (${esc(r.creditedId)})</div>`:""}`:r.found&&(st.names.length||st.orcid)?`<span class="muted small">name not matched</span>`:"—"},
+    {k:"cites",h:"Citations",num:true,sortv:r=>r.found?r.cites:null,html:r=>r.found?String(r.cites):"—"},
+  ], {sort:"credited"});
+  tp.querySelector(".dl").onclick=()=>download("my_publication_check.csv", toCSV(st.rows, [
+    {k:"doi",h:"doi"},{k:"found",h:"in_openalex",csv:r=>r.found?"yes":"no"},{k:"title",h:"title"},{k:"year",h:"year"},{k:"journal",h:"journal"},
+    {k:"tier",h:"journal_tier",csv:r=>r.found?TIER[r.tier].label:""},{k:"posN",h:"author_position"},{k:"nAuth",h:"n_authors"},{k:"printed",h:"name_as_printed"},
+    {k:"creditedTo",h:"openalex_profile_name"},{k:"creditedId",h:"openalex_profile_id"},{k:"elsewhere",h:"credited_to_other_profile",csv:r=>r.elsewhere?"yes":""},{k:"retracted",h:"retracted",csv:r=>r.found&&r.w.is_retracted?"yes":""},{k:"cites",h:"citations"}]));
 }
 
 /* ---------------- JOURNAL view ---------------- */
@@ -2497,7 +2586,7 @@ function showTab(v){
   document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x.dataset.v===v));
   document.querySelectorAll(".view").forEach(el=>el.classList.toggle("on",el.id==="v-"+v));
 }
-function rerender(){ renderStaff(); renderScan(); renderAuthor(); renderJournal(); if(R){ renderIncent(); renderMgmt(); } }
+function rerender(){ renderStaff(); renderScan(); if(listState&&!authorState) renderPubList(); else renderAuthor(); renderJournal(); if(R){ renderIncent(); renderMgmt(); } }
 function legend(){ $("#legend").innerHTML=TIERS.map(t=>`<span style="--c:${t.c}">${esc(t.label)}</span>`).join(""); }
 function init(){
   S.key=store.get("key")||""; $("#apiKey").value=S.key;
@@ -2547,10 +2636,11 @@ function init(){
   document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("#formModal").classList.add("hidden"); });
   $("#btnStaff").onclick=()=>run(doStaff);
   autocomplete("#acInst","institutions",picker("inst","#pickedInst",true));
-  autocomplete("#acAuthor","authors",picker("author","#pickedAuthor",true));
+  autocomplete("#acAuthor","authors",picker("author","#pickedAuthor",false));
   autocomplete("#acSource","sources",picker("source","#pickedSource",false));
   $("#btnScan").onclick=()=>run(doScan);
   $("#btnAuthor").onclick=()=>run(doAuthor);
+  $("#btnPubList").onclick=()=>run(doPubList);
   $("#btnJournal").onclick=()=>run(doJournal);
   $("#btnCancel").onclick=()=>{ S.cancel=true; };
 
