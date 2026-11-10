@@ -148,7 +148,7 @@ If you use RIC in your work, please cite it. GitHub's **"Cite this repository"**
 
 ### APA
 
-> Bitew, M. K. (2026). *Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ* (Version 1.0.0) [Computer software]. GitHub. https://github.com/Muler-21/Research-Integrity-Compass-
+> Bitew, M. K. (2026). *Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ* (Version 1.1.0) [Computer software]. GitHub. https://github.com/Muler-21/Research-Integrity-Compass-
 
 ### BibTeX
 
@@ -156,7 +156,7 @@ If you use RIC in your work, please cite it. GitHub's **"Cite this repository"**
 @software{bitew_ric_2026,
   author  = {Bitew, Mulusew Kassa},
   title   = {Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ},
-  version = {1.0.0},
+  version = {1.1.0},
   year    = {2026},
   url     = {https://github.com/Muler-21/Research-Integrity-Compass-}
 }

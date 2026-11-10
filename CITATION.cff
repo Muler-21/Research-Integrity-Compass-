@@ -14,9 +14,9 @@ authors:
     given-names: Mulusew Kassa
     orcid: "https://orcid.org/0000-0001-6223-0037"
     affiliation: "University of Molise, Italy; Department of Plant Science, College of Agriculture and Natural Resources, Debre Markos University, Ethiopia"
-version: 1.0.0
+version: 1.1.0
 license: MIT
-date-released: "2026-11-06"
+date-released: "2026-11-10"
 repository-code: "https://github.com/Muler-21/Research-Integrity-Compass-"
 url: "https://muler-21.github.io/Research-Integrity-Compass-/"
 keywords:
