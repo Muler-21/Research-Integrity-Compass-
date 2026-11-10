@@ -3,6 +3,8 @@
 
 **Publication quality, integrity and reward screening for universities.**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24114995.svg)](https://doi.org/10.5281/zenodo.24114995)
+
 **Live app:** https://muler-21.github.io/Research-Integrity-Compass-/ · **Video tour:** https://youtu.be/p-LxSzZi7-0 · **Author:** Mulusew Kassa Bitew ([ORCID 0000-0001-6223-0037](https://orcid.org/0000-0001-6223-0037)) · **Licence:** MIT · **Cite:** see [How to cite](#how-to-cite)
 
 RIC is a single-file web app for university research-management teams. It does five things:
@@ -148,7 +150,7 @@ If you use RIC in your work, please cite it. GitHub's **"Cite this repository"**
 
 ### APA
 
-> Bitew, M. K. (2026). *Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ* (Version 1.1.0) [Computer software]. GitHub. https://github.com/Muler-21/Research-Integrity-Compass-
+> Bitew, M. K. (2026). *Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ* (Version 1.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.24114995
 
 ### BibTeX
 
@@ -158,11 +160,11 @@ If you use RIC in your work, please cite it. GitHub's **"Cite this repository"**
   title   = {Research Integrity Compass (RIC) — የምርምር ታማኝነት ኮምፓስ},
   version = {1.1.0},
   year    = {2026},
-  url     = {https://github.com/Muler-21/Research-Integrity-Compass-}
+  publisher = {Zenodo},
+  doi     = {10.5281/zenodo.24114995},
+  url     = {https://doi.org/10.5281/zenodo.24114995}
 }
 ```
-
-<!-- After archiving a release on Zenodo, add: DOI badge and "https://doi.org/10.5281/zenodo.XXXXXXX" to the citations above. -->
 
 ## References and data sources
 
