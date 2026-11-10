@@ -180,8 +180,9 @@ RIC builds on the following open data, standards and policies. Please acknowledg
 ## Author
 
 **Mulusew Kassa Bitew**, Postdoctoral Research Fellow, University of Molise, Italy\
+Department of Plant Science, College of Agriculture and Natural Resources, Debre Markos University, Ethiopia\
 ORCID [0000-0001-6223-0037](https://orcid.org/0000-0001-6223-0037) · GitHub [@Muler-21](https://github.com/Muler-21) · Website [muler-21.github.io](https://muler-21.github.io)\
-Other apps: [Research Integrity Compass](https://github.com/Muler-21/Research-Integrity-Compass-) · [Sebel Hakim](https://github.com/Muler-21/sebel-hakim) · [Genna Clash](https://github.com/Muler-21/genna-clash)\
+Other apps: [Research Integrity Compass](https://github.com/Muler-21/Research-Integrity-Compass-) · [Sebel Hakim](https://github.com/Muler-21/sebel-hakim) · [Genna Clash](https://github.com/Muler-21/genna-clash) · [AMBKidsJoy](https://github.com/Muler-21/muler-21.github.io/tree/main/AMBKidsJoy) · [AdaptFit](https://muler-21.github.io/apps/adaptfit/)\
 © 2026 Mulusew Kassa Bitew. See [Licence](#licence).
 
 Feedback, bug reports and new institutional rule sets are welcome through [GitHub Issues](https://github.com/Muler-21/Research-Integrity-Compass-/issues).
