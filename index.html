@@ -127,6 +127,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
 .rs-grid textarea{min-height:70px}
 .st{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
 .st.eligible{background:var(--high)}.st.review{background:var(--caution)}.st.rejected{background:var(--flagged)}.st.approved{background:var(--solid)}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.figcard{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--panel)}.figimg img{display:block;width:100%;height:auto;border-radius:6px;border:1px solid var(--line);background:#fff}.figfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;flex-wrap:wrap}.figbtns{display:flex;gap:4px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
 .kpi{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .kpi .n{font-size:22px;font-weight:700}.kpi .l{font-size:12px;color:var(--muted)}
@@ -854,7 +855,7 @@ function openKeySetup(){
   setTimeout(()=>$("#apiKey").focus({preventScroll:true}),400);
 }
 function clearStatus(){ $("#status").classList.remove("on"); }
-const TRACK_NAMES={doMgmt:"build-dashboard", doIncent:"screen-claims", doStaff:"find-staff", doScan:"tier-scan", doAuthor:"researcher-profile", doJournal:"journal-researchers"};
+const TRACK_NAMES={figure_png:"figure-png", figure_jpg:"figure-jpg", figure_pdf:"figure-pdf", figure_allpdf:"figures-all-pdf", doMgmt:"build-dashboard", doIncent:"screen-claims", doStaff:"find-staff", doScan:"tier-scan", doAuthor:"researcher-profile", doJournal:"journal-researchers"};
 function track(fnName){ const name=TRACK_NAMES[fnName]; try{ if(name && window.goatcounter && window.goatcounter.count) window.goatcounter.count({path:"ric-"+name, title:"RIC: "+name, event:true}); }catch(e){} }
 async function run(fn){
   if(S.busy) return; S.busy=true; S.cancel=false; track(fn.name);
@@ -2120,6 +2121,162 @@ function yearChart(rows, y0, y1){
   return el;
 }
 
+/* ---------------- REPORT FIGURES (PNG · JPG · PDF) ----------------
+   Drawn on canvas from the dashboard data at 1600×1000 logical px; exported at ×2 (3200×2000 px ≈ 300 dpi at 27 cm). */
+const FIG_C={exc:"#104281",str:"#2a78d6",std:"#86b6ef",unv:"#c9c8c2",risk:"#d03b3b",
+  high:"#0f6b4f",solid:"#3b9c7a",indexed:"#6f8fb0",unvetted:"#9aa3ad",caution:"#d98c1f",flagged:"#c2362f",other:"#c9ced4",none:"#e4e7ea",
+  ink:"#14213D",muted:"#5b6472",grid:"#e3e7ec",ok:"#2e7d32",warn:"#d98c1f",no:"#b9bec6"};
+const FIG_FONT="system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans Ethiopic','Nyala',Arial,sans-serif";
+const FIG_BANDS=["exc","str","std","unv","risk"];
+function figNice(m){ if(m<=0) return 1; const p=Math.pow(10,Math.floor(Math.log10(m))), f=m/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
+function figStep(x){ if(x<=0) return 1; const p=Math.pow(10,Math.floor(Math.log10(x))), f=x/p; return Math.max(1,(f<=1?1:f<=2?2:f<=5?5:10)*p); }
+function figScale(maxVal,ticks){ const step=figStep(Math.max(1,maxVal)/ticks); return {step, mx:Math.max(step,Math.ceil(Math.max(1,maxVal)/step)*step)}; }
+function figFit(ctx,t,w){ t=String(t); if(ctx.measureText(t).width<=w) return t; while(t.length>1&&ctx.measureText(t+"…").width>w) t=t.slice(0,-1); return t+"…"; }
+function figFrame(ctx,F,meta){
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,1600,1600);
+  ctx.fillStyle=FIG_C.ink; ctx.font=`700 40px ${FIG_FONT}`; ctx.textBaseline="alphabetic"; ctx.textAlign="left";
+  ctx.fillText(figFit(ctx,`${F.n}. ${F.title}`,1520),40,66);
+  ctx.fillStyle=FIG_C.muted; ctx.font=`400 24px ${FIG_FONT}`; ctx.fillText(figFit(ctx,F.sub||meta.sub,1520),40,104);
+}
+function figFooter(ctx,meta,H){
+  ctx.font=`400 17px ${FIG_FONT}`; ctx.fillStyle="#7a828e"; ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  ctx.fillText(figFit(ctx,meta.foot,1520),40,H-25);
+  ctx.strokeStyle=FIG_C.grid; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(40,H-54); ctx.lineTo(1560,H-54); ctx.stroke();
+}
+function figLegend(ctx,items,x,y,maxW=1520){
+  ctx.font=`500 21px ${FIG_FONT}`; ctx.textBaseline="middle"; let cx=x, cy=y;
+  for(const it of items){ const w=30+ctx.measureText(it.label).width+30; if(cx+w>x+maxW){ cx=x; cy+=34; }
+    ctx.fillStyle=it.c; ctx.fillRect(cx,cy-10,20,20); if(it.c==="#fff"||it.c===FIG_C.none){ ctx.strokeStyle="#aaa"; ctx.strokeRect(cx,cy-10,20,20); }
+    ctx.fillStyle=FIG_C.ink; ctx.textAlign="left"; ctx.fillText(it.label,cx+28,cy+1); cx+=w; }
+  return cy+30;
+}
+/* vertical stacked bars: cats=[label], series=[{label,c,vals:[]}] */
+function figVStack(ctx,cats,series,top=150){
+  const ly=figLegend(ctx,series.map(s=>({label:s.label,c:s.c})),40,top);
+  const X0=110,X1=1550,Y0=ly+20,Y1=870;
+  const tot=cats.map((_,i)=>series.reduce((a,s)=>a+(s.vals[i]||0),0)); const {step,mx}=figScale(Math.max(1,...tot)*1.08,5);
+  ctx.font=`400 19px ${FIG_FONT}`; ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(let v=0;v<=mx+1e-9;v+=step){ const y=Y1-(Y1-Y0)*v/mx; ctx.strokeStyle=FIG_C.grid; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(X0,y); ctx.lineTo(X1,y); ctx.stroke(); ctx.fillStyle=FIG_C.muted; ctx.fillText(Math.round(v).toLocaleString(),X0-12,y); }
+  const bw=(X1-X0)/cats.length, w=Math.min(110,bw*0.66);
+  cats.forEach((c,i)=>{ const x=X0+bw*i+(bw-w)/2; let y=Y1;
+    for(const s of series){ const v=s.vals[i]||0; if(!v) continue; const h=(Y1-Y0)*v/mx; ctx.fillStyle=s.c; ctx.fillRect(x,y-h,w,h); y-=h; }
+    ctx.fillStyle=FIG_C.ink; ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.font=`700 21px ${FIG_FONT}`; if(tot[i]) ctx.fillText(tot[i].toLocaleString(),x+w/2,y-6);
+    ctx.textBaseline="top"; ctx.font=`500 ${cats.length>14?16:20}px ${FIG_FONT}`; ctx.fillStyle=FIG_C.ink; ctx.fillText(figFit(ctx,c,bw-6),x+w/2,Y1+12); });
+  ctx.strokeStyle=FIG_C.ink; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(X0,Y1); ctx.lineTo(X1,Y1); ctx.stroke();
+  return Y1+50;
+}
+/* horizontal bars: items=[{label,segs:[{v,c}],note}] */
+function figHBar(ctx,items,legend,opts={}){
+  let top=150; if(legend?.length) top=figLegend(ctx,legend,40,top)+6;
+  const n=items.length, LBL=opts.labelW||430, X0=40+LBL+16, X1=1440, Y0=top+30;
+  const tot=items.map(it=>it.segs.reduce((a,s)=>a+s.v,0)); const {step,mx}=figScale(Math.max(1,...tot)*1.04,4);
+  const bh=n<=12?62:46, h=bh*0.66;
+  ctx.font=`400 17px ${FIG_FONT}`; ctx.textAlign="center"; ctx.textBaseline="bottom";
+  for(let v=0;v<=mx+1e-9;v+=step){ const x=X0+(X1-X0)*v/mx; ctx.strokeStyle=FIG_C.grid; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(x,Y0-4); ctx.lineTo(x,Y0+bh*n); ctx.stroke(); ctx.fillStyle=FIG_C.muted; ctx.fillText(Math.round(v).toLocaleString(),x,Y0-8); }
+  items.forEach((it,i)=>{ const y=Y0+bh*i+(bh-h)/2; let x=X0;
+    ctx.font=`500 ${bh<50?18:21}px ${FIG_FONT}`; ctx.fillStyle=FIG_C.ink; ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.fillText(figFit(ctx,it.label,LBL),40+LBL,y+h/2);
+    for(const s of it.segs){ if(!s.v) continue; const w=(X1-X0)*s.v/mx; ctx.fillStyle=s.c; ctx.fillRect(x,y,w,h); x+=w; }
+    ctx.textAlign="left"; ctx.font=`700 ${bh<30?16:19}px ${FIG_FONT}`; ctx.fillStyle=FIG_C.ink; ctx.fillText(tot[i].toLocaleString()+(it.note?`  ${it.note}`:""),x+8,y+h/2); });
+  return Y0+bh*n+30;
+}
+/* lines of shares (0..1) by year */
+function figLines(ctx,cats,series){
+  const ly=figLegend(ctx,series.map(s=>({label:s.label,c:s.c})),40,150);
+  const X0=110,X1=1520,Y0=ly+20,Y1=870;
+  const mx=Math.min(1,Math.max(0.1,Math.ceil(Math.max(0.01,...series.flatMap(s=>s.vals.filter(v=>v!=null)))*10)/10));
+  ctx.font=`400 19px ${FIG_FONT}`; ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(let k=0;k<=5;k++){ const v=mx*k/5, y=Y1-(Y1-Y0)*k/5; ctx.strokeStyle=FIG_C.grid; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(X0,y); ctx.lineTo(X1,y); ctx.stroke(); ctx.fillStyle=FIG_C.muted; ctx.fillText(Math.round(100*v)+"%",X0-12,y); }
+  const xs=i=>cats.length===1?(X0+X1)/2:X0+30+(X1-X0-60)*i/(cats.length-1), ys=v=>Y1-(Y1-Y0)*v/mx;
+  ctx.textAlign="center"; ctx.textBaseline="top"; ctx.fillStyle=FIG_C.ink; ctx.font=`500 20px ${FIG_FONT}`; cats.forEach((c,i)=>ctx.fillText(c,xs(i),Y1+12));
+  for(const s of series){ ctx.strokeStyle=s.c; ctx.lineWidth=5; ctx.setLineDash(s.dash||[]); ctx.beginPath(); let on=false;
+    s.vals.forEach((v,i)=>{ if(v==null){ on=false; return; } on?ctx.lineTo(xs(i),ys(v)):ctx.moveTo(xs(i),ys(v)); on=true; }); ctx.stroke(); ctx.setLineDash([]);
+    s.vals.forEach((v,i)=>{ if(v==null) return; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(xs(i),ys(v),8,0,7); ctx.fill(); ctx.strokeStyle=s.c; ctx.lineWidth=4; ctx.stroke(); });
+    const li=s.vals.map((v,i)=>v==null?-1:i).filter(i=>i>=0).pop(); if(li!=null&&li>=0){ ctx.fillStyle=s.c; ctx.font=`700 19px ${FIG_FONT}`; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(Math.round(100*s.vals[li])+"%",xs(li)+14,ys(s.vals[li])-14); ctx.textAlign="center"; ctx.textBaseline="top"; ctx.font=`500 20px ${FIG_FONT}`; ctx.fillStyle=FIG_C.ink; } }
+  ctx.strokeStyle=FIG_C.ink; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(X0,Y1); ctx.lineTo(X1,Y1); ctx.stroke();
+  return Y1+50;
+}
+function figBandSegs(rs){ return FIG_BANDS.map(b=>({v:rs.filter(r=>r.band===b).length,c:FIG_C[b]})); }
+const FIG_BAND_LEGEND=()=>FIG_BANDS.map(b=>({label:BAND[b].label.replace("⚠ ",""),c:FIG_C[b]}));
+function figTopGroups(rows,keyFn,limit,skip=/not (stated|recorded)/i){
+  const m=new Map(); for(const r of rows) for(const k of keyFn(r)) if(k&&!skip.test(k)){ if(!m.has(k)) m.set(k,[]); m.get(k).push(r); }
+  const all=[...m].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0])); return {top:all.slice(0,limit), more:Math.max(0,all.length-limit)};
+}
+/* figure specs from dashboard rows */
+function buildFigures(rows,meta){
+  const F=[]; const yrs=[]; for(let y=+meta.y0;y<=+meta.y1;y++) yrs.push(y);
+  const byY=y=>rows.filter(r=>r.year===y); const share=(a,f)=>a.length?a.filter(f).length/a.length:null;
+  F.push({title:"Publications per year by quality band", draw:ctx=>figVStack(ctx,yrs.map(String),FIG_BANDS.map(b=>({label:BAND[b].label.replace("⚠ ",""),c:FIG_C[b],vals:yrs.map(y=>byY(y).filter(r=>r.band===b).length)})))});
+  F.push({title:"Quality profile of all publications", draw:ctx=>figHBar(ctx,FIG_BANDS.map(b=>{ const v=rows.filter(r=>r.band===b).length; return {label:BAND[b].label.replace("⚠ ",""),segs:[{v,c:FIG_C[b]}],note:rows.length?`(${(100*v/rows.length).toFixed(1)}%)`:""}; }),null,{labelW:300})});
+  F.push({title:"Impact, collaboration and open access by year", sub:meta.sub+" · shares of each year's papers", draw:ctx=>figLines(ctx,yrs.map(String),[
+    {label:"In world top 10% most cited",c:FIG_C.exc,vals:yrs.map(y=>share(byY(y),r=>r.top10))},
+    {label:"International co-authorship",c:"#3b9c7a",vals:yrs.map(y=>share(byY(y),r=>r.intl))},
+    {label:"Open access",c:"#d98c1f",vals:yrs.map(y=>share(byY(y),r=>r.oa)),dash:[14,10]},
+    {label:"Led by the institution",c:"#7b4fa6",vals:yrs.map(y=>share(byY(y),r=>r.led)),dash:[4,8]}])});
+  const dg=figTopGroups(rows,r=>r.depts||[],20);
+  if(dg.top.length) F.push({title:"Publications by department", sub:meta.sub+(dg.more?` · top 20 of ${dg.top.length+dg.more} departments`:"")+" · a paper counts for every department of its authors", draw:ctx=>figHBar(ctx,dg.top.map(([k,rs])=>({label:k.replace(/^Department of /,""),segs:figBandSegs(rs)})),FIG_BAND_LEGEND())});
+  const cg=figTopGroups(rows,r=>r.campuses||[],10,/^$/);
+  if(cg.top.length>1||(cg.top[0]&&cg.top[0][0]!==NOT_STATED)) F.push({title:"Publications by campus", draw:ctx=>figHBar(ctx,cg.top.map(([k,rs])=>({label:k,segs:figBandSegs(rs)})),FIG_BAND_LEGEND(),{labelW:320})});
+  const fg=figTopGroups(rows,r=>[r.field],15);
+  if(fg.top.length) F.push({title:"Publications by research field", sub:meta.sub+" · OpenAlex primary field", draw:ctx=>figHBar(ctx,fg.top.map(([k,rs])=>({label:k,segs:figBandSegs(rs)})),FIG_BAND_LEGEND())});
+  const jg=figTopGroups(rows,r=>[r.src?.display_name||""],15);
+  const usedT=[...new Set(jg.top.map(([,rs])=>rs[0].tier))];
+  if(jg.top.length) F.push({title:"Journals used most often", sub:meta.sub+" · colour = journal tier", draw:ctx=>figHBar(ctx,jg.top.map(([k,rs])=>({label:k,segs:[{v:rs.length,c:FIG_C[rs[0].tier]||FIG_C.other}]})),TIERS.filter(t=>usedT.includes(t.id)).map(t=>({label:t.label,c:FIG_C[t.id]})),{labelW:560})});
+  const pg=figTopGroups(rows,r=>[r.src?.host_organization_name||""],12);
+  if(pg.top.length) F.push({title:"Publishers used most often", draw:ctx=>figHBar(ctx,pg.top.map(([k,rs])=>({label:k,segs:figBandSegs(rs)})),FIG_BAND_LEGEND())});
+  const rew=y=>{ const a=byY(y); return [a.filter(r=>r.dmuOk&&r.status!=="review").length,a.filter(r=>r.dmuOk&&r.status==="review").length,a.filter(r=>!r.dmuOk).length]; };
+  F.push({title:"Eligibility for the publication reward, by year", sub:meta.sub+" · "+meta.rules, draw:ctx=>figVStack(ctx,yrs.map(String),[
+    {label:"Eligible",c:FIG_C.ok,vals:yrs.map(y=>rew(y)[0])},{label:"Eligible, needs review",c:FIG_C.warn,vals:yrs.map(y=>rew(y)[1])},{label:"Not eligible",c:FIG_C.no,vals:yrs.map(y=>rew(y)[2])}])});
+  F.forEach((f,i)=>f.n=i+1);
+  return F;
+}
+function renderFigure(F,meta,scale){
+  const big=document.createElement("canvas"); big.width=1600*scale; big.height=1600*scale;
+  const ctx=big.getContext("2d"); ctx.scale(scale,scale); figFrame(ctx,F,meta); ctx.save(); const bottom=F.draw(ctx)||870; ctx.restore();
+  const H=Math.min(1600,Math.max(620,Math.ceil(bottom+80))); figFooter(ctx,meta,H);
+  const cv=document.createElement("canvas"); cv.width=1600*scale; cv.height=H*scale; cv.getContext("2d").drawImage(big,0,0); return cv;
+}
+function b64bytes(d){ const s=atob(d.split(",")[1]); const u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
+/* minimal PDF: one A4-landscape page per JPEG */
+function pdfFromJpegs(imgs,title){
+  const enc=new TextEncoder(), parts=[], offs=[]; let len=0;
+  const push=x=>{ const b=typeof x==="string"?enc.encode(x):x; parts.push(b); len+=b.length; };
+  const obj=(n,body)=>{ offs[n]=len; push(`${n} 0 obj\n`); body(); push("\nendobj\n"); };
+  push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+  const N=imgs.length, PW=842, PH=595, M=24; const pageIds=imgs.map((_,i)=>4+i*3);
+  obj(1,()=>push(`<< /Type /Catalog /Pages 2 0 R >>`));
+  obj(2,()=>push(`<< /Type /Pages /Kids [${pageIds.map(i=>i+" 0 R").join(" ")}] /Count ${N} >>`));
+  obj(3,()=>push(`<< /Producer (Research Integrity Compass) /Title (${String(title).replace(/[()\\]/g,"").replace(/[^\x20-\x7E]/g,"")}) >>`));
+  imgs.forEach((im,i)=>{ const p=4+i*3; const s=Math.min((PW-2*M)/im.w,(PH-2*M)/im.h), w=im.w*s, h=im.h*s, x=(PW-w)/2, y=(PH-h)/2;
+    const cs=`q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im0 Do Q`;
+    obj(p,()=>push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 ${p+2} 0 R >> >> /Contents ${p+1} 0 R >>`));
+    obj(p+1,()=>push(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`));
+    obj(p+2,()=>{ push(`<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`); push(im.bytes); push("\nendstream"); }); });
+  const xref=len, total=4+N*3;
+  push(`xref\n0 ${total}\n0000000000 65535 f \n`+Array.from({length:total-1},(_,k)=>String(offs[k+1]).padStart(10,"0")+" 00000 n \n").join(""));
+  push(`trailer\n<< /Size ${total} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parts,{type:"application/pdf"});
+}
+function saveBlob(name,blob){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },800); }
+function figurePanel(rows,meta,fileTag){
+  const F=buildFigures(rows,meta);
+  const p=document.createElement("div"); p.className="panel"; p.id="mgmtFigures";
+  p.innerHTML=`<div class="toolbar"><h2 style="margin:0">Report figures</h2><span class="grow"></span><button class="small primary allpdf">⬇ All ${F.length} figures (PDF)</button></div>
+    <p class="small muted" style="margin:0 0 10px">Ready for reports and presentations: 3200 px wide (about 300 dpi at 27 cm), white background, with title, legend, data labels and source line. They follow the campus and department filters above. Choose PNG for slides and Word, JPG for e-mail, PDF for print.</p>
+    <div class="figgrid">${F.map((f,i)=>`<div class="figcard"><div class="figimg" data-i="${i}"></div><div class="figfoot"><span class="small"><b>${f.n}.</b> ${esc(f.title)}</span><span class="figbtns"><button class="small" data-i="${i}" data-f="png">PNG</button><button class="small" data-i="${i}" data-f="jpg">JPG</button><button class="small" data-i="${i}" data-f="pdf">PDF</button></span></div></div>`).join("")}</div>`;
+  p.querySelectorAll(".figimg").forEach(d=>{ const im=new Image(); im.alt=F[+d.dataset.i].title; im.src=renderFigure(F[+d.dataset.i],meta,0.5).toDataURL("image/png"); d.appendChild(im); });
+  const name=(f,ext)=>`figure${f.n}_${slug(f.title)}_${fileTag}.${ext}`;
+  p.addEventListener("click",e=>{ const b=e.target.closest("button[data-f]"); if(!b) return; const f=F[+b.dataset.i];
+    const cv=renderFigure(f,meta,2), fmt=b.dataset.f;
+    if(fmt==="png") cv.toBlob(bl=>saveBlob(name(f,"png"),bl),"image/png");
+    else if(fmt==="jpg") cv.toBlob(bl=>saveBlob(name(f,"jpg"),bl),"image/jpeg",0.95);
+    else saveBlob(name(f,"pdf"),pdfFromJpegs([{bytes:b64bytes(cv.toDataURL("image/jpeg",0.95)),w:cv.width,h:cv.height}],f.title));
+    track("figure_"+fmt);
+  });
+  p.querySelector(".allpdf").onclick=()=>{ const imgs=F.map(f=>{ const cv=renderFigure(f,meta,2); return {bytes:b64bytes(cv.toDataURL("image/jpeg",0.93)),w:cv.width,h:cv.height}; });
+    saveBlob(`figures_${fileTag}.pdf`,pdfFromJpegs(imgs,`${meta.inst} publication figures`)); track("figure_allpdf"); };
+  return p;
+}
+
 S.publishers = new Map();
 async function fetchPublishers(sources){
   const ids=[...new Set(sources.flatMap(s=>[s.host_organization, ...(s.host_organization_lineage||[])]).filter(Boolean).map(sid).filter(x=>/^P\d+$/.test(x)))];
@@ -2317,6 +2474,15 @@ function renderMgmt(){
   bc.querySelectorAll(".tc").forEach(c=>c.onclick=()=>{ st.band=st.band===c.dataset.band?null:c.dataset.band; renderMgmt(); document.getElementById("mgmtPapers")?.scrollIntoView({behavior:"smooth"}); });
   yc.appendChild(bc);
   out.appendChild(yc);
+
+  // Report figures (PNG / JPG / PDF)
+  { const scope=[R.institution.name, st.fCampus, st.fDept].filter(Boolean).join(" · ");
+    const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+    const fmeta={inst:R.institution.name, y0:st.y0, y1:st.y1, rules:R.name||"institution rules",
+      sub:`${scope} · ${st.y0}–${st.y1} · ${rows.length.toLocaleString()} publications`,
+      foot:`Source: OpenAlex (CC0), analysed with Research Integrity Compass · doi.org/10.5281/zenodo.24114995 · ${today}. Recent years are incomplete.`};
+    const ftag=`${slug(R.institution.name)}${st.fCampus?"_"+slug(st.fCampus):""}${st.fDept?"_"+slug(st.fDept):""}_${st.y0}-${st.y1}`;
+    if(rows.length) out.appendChild(figurePanel(rows,fmeta,ftag)); }
 
   // Fields
   const fp=document.createElement("div"); fp.className="panel";
