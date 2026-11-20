@@ -870,7 +870,7 @@ async function run(fn){
   finally{ S.busy=false; document.querySelectorAll("button.primary").forEach(b=>b.disabled=false); }
 }
 function download(name, text){
-  const b=new Blob([text],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a");
+  const b=new Blob([/\.csv$/i.test(name)?"\uFEFF"+text:text],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a");
   a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
@@ -2515,7 +2515,8 @@ function renderMgmt(){
   // Papers
   const pp=document.createElement("div"); pp.className="panel"; pp.id="mgmtPapers";
   pp.innerHTML=`<div class="toolbar"><h2 style="margin:0">Papers${st.band?` — ${bandTag(st.band)}`:""}</h2><span class="grow"></span>
-    <input class="pf" placeholder="filter by title, journal, author…" style="width:240px" value="${esc(st.q)}"><button class="small dl">Download CSV</button></div><div class="tw"></div>`;
+    <input class="pf" placeholder="filter by title, journal, author…" style="width:240px" value="${esc(st.q)}"><button class="small dl">⬇ Publications (CSV)</button><button class="small dla">⬇ Authors of each paper (CSV)</button></div>
+    <p class="small muted" style="margin:0 0 8px"><b>Publications</b>: one row per paper with journal, publisher, ISSN, volume/issue/pages, citations, open access, quality band, reward category and the full author list (with ORCID iDs, corresponding authors and institutions). <b>Authors of each paper</b>: one row per author per paper, with position, ORCID, institutions and, for ${esc(R.institution.name)} authors, department, college and campus. Both follow the campus, department, band and text filters, so a department can download only its own list. They open directly in Excel.</p><div class="tw"></div>`;
   const pCols=[
     {k:"band",h:"Band",sortv:r=>["risk","unv","std","str","exc"].indexOf(r.band),html:r=>bandTag(r.band)+(r.riskWhy.length?`<div class="flagnote">${esc(r.riskWhy.join("; "))}</div>`:"")},
     {k:"t",h:"Paper",sortv:r=>r.w.display_name,html:r=>`${r.doi?`<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${esc(r.w.display_name)}</a>`:esc(r.w.display_name)}<div class="flagnote">${esc(String(r.year))} · ${esc(r.type)} · ${esc(r.field)}${r.w._viaText?" · via affiliation text":""}${r.campuses&&r.campuses[0]!==NOT_STATED?" · "+esc(r.campuses.join(", ")):""}</div>`},
@@ -2531,16 +2532,51 @@ function renderMgmt(){
   const pRowsF=()=>{ const q=norm(st.q); return rows.filter(r=>(!st.band||r.band===st.band)&&(!q||norm([r.w.display_name,r.src?.display_name,...r.auths.map(a=>a.author?.display_name)].join(" ")).includes(q))); };
   const pDraw=()=>table(pp.querySelector(".tw"), pRowsF(), pCols, {sort:"band"});
   pp.querySelector(".pf").addEventListener("input",e=>{ st.q=e.target.value; pDraw(); });
-  pp.querySelector(".dl").onclick=()=>download(`publications_${slug(R.institution.name)}_${st.y0}-${st.y1}.csv`, toCSV(pRowsF(), [
-    {k:"id",h:"openalex_id"},{k:"doi",h:"doi"},{k:"t",h:"title",csv:r=>r.w.display_name},{k:"year",h:"year"},{k:"type",h:"type"},{k:"field",h:"field"},
-    {k:"j",h:"journal",csv:r=>r.src?.display_name||""},{k:"tier",h:"journal_tier",csv:r=>TIER[r.tier]?.label||""},
+  // export helpers
+  const instId2=R.institution?.id, instName2=R.institution?.name;
+  const orc=a=>String(a.author?.orcid||"").replace(/^https?:\/\/orcid\.org\//i,"");
+  const aName=a=>a.author?.display_name||a.raw_author_name||"";
+  const aLabel=a=>aName(a)+(orc(a)?` [${orc(a)}]`:"");
+  const posOf=(r,i)=>authorPos(r,i);
+  const authDept=a=>{ if(!a.aff) return {dept:"",college:"",campus:""}; const d=paperDept(a,instId2,instName2), pi=a.author?.id?dIdx.get(sid(a.author.id)):null;
+    return {dept:d.dept||pi?.dept||"", college:d.college||pi?.college||"", campus:d.campus||pi?.campus||NOT_STATED}; };
+  const pages=b=>b?.first_page?(b.last_page&&b.last_page!==b.first_page?`${b.first_page}-${b.last_page}`:b.first_page):"";
+  const fileTag=`${slug(R.institution.name)}${st.fCampus?"_"+slug(st.fCampus):""}${st.fDept?"_"+slug(st.fDept):""}_${st.y0}-${st.y1}`;
+  pp.querySelector(".dla").onclick=()=>{
+    const long=[]; for(const r of pRowsF()) r.auths.forEach((a,i)=>long.push({r,a,i}));
+    download(`authors_of_publications_${fileTag}.csv`, toCSV(long, [
+      {k:"wid",h:"openalex_work_id",csv:x=>x.r.id},{k:"doi",h:"doi",csv:x=>x.r.doi||""},{k:"t",h:"title",csv:x=>x.r.w.display_name},
+      {k:"y",h:"year",csv:x=>x.r.year},{k:"j",h:"journal",csv:x=>x.r.src?.display_name||""},{k:"pub",h:"publisher",csv:x=>x.r.src?.host_organization_name||""},
+      {k:"n",h:"author_number",csv:x=>x.i+1},{k:"of",h:"number_of_authors",csv:x=>x.r.auths.length},{k:"pos",h:"author_position",csv:x=>posOf(x.r,x.i)},
+      {k:"nm",h:"author_name",csv:x=>aName(x.a)},{k:"raw",h:"name_as_printed",csv:x=>x.a.raw_author_name||""},{k:"orcid",h:"orcid",csv:x=>orc(x.a)},
+      {k:"aid",h:"openalex_author_id",csv:x=>x.a.author?.id?sid(x.a.author.id):""},{k:"corr",h:"corresponding_author",csv:x=>x.a.is_corresponding?"yes":""},
+      {k:"aff",h:`affiliated_with_${slug(R.institution.name)}`,csv:x=>x.a.aff?"yes":"no"},
+      {k:"dept",h:"department",csv:x=>authDept(x.a).dept},{k:"col",h:"college_or_faculty",csv:x=>authDept(x.a).college},{k:"camp",h:"campus",csv:x=>authDept(x.a).campus},
+      {k:"inst",h:"institutions",csv:x=>(x.a.institutions||[]).map(i=>i.display_name).join("; ")},
+      {k:"cty",h:"countries",csv:x=>[...new Set([...(x.a.countries||[]),...(x.a.institutions||[]).map(i=>i.country_code)].filter(Boolean))].join("; ")},
+      {k:"rawaff",h:"affiliation_as_printed",csv:x=>(x.a.raw_affiliation_strings||(x.a.affiliations||[]).map(f=>f.raw_affiliation_string)||[]).join(" | ")},
+      {k:"tier",h:"journal_tier",csv:x=>TIER[x.r.tier]?.label||""},{k:"band",h:"quality_band",csv:x=>BAND[x.r.band].label.replace("⚠ ","")},
+      {k:"rc",h:"reward_category",csv:x=>x.r.dmuOk?x.r.cat.label:""},
+    ]));
+  };
+  pp.querySelector(".dl").onclick=()=>download(`publications_${fileTag}.csv`, toCSV(pRowsF(), [
+    {k:"id",h:"openalex_id"},{k:"doi",h:"doi"},{k:"t",h:"title",csv:r=>r.w.display_name},{k:"year",h:"year"},{k:"date",h:"publication_date",csv:r=>r.w.publication_date||""},{k:"type",h:"type"},{k:"field",h:"field"},
+    {k:"j",h:"journal",csv:r=>r.src?.display_name||""},{k:"issn",h:"issn",csv:r=>(r.src?.issn||[r.src?.issn_l].filter(Boolean)).join("; ")},
+    {k:"vol",h:"volume",csv:r=>r.w.biblio?.volume||""},{k:"iss",h:"issue",csv:r=>r.w.biblio?.issue||""},{k:"pg",h:"pages",csv:r=>pages(r.w.biblio)},
+    {k:"cites",h:"times_cited",csv:r=>r.w.cited_by_count??""},{k:"oas",h:"open_access_status",csv:r=>r.w.open_access?.oa_status||""},{k:"oau",h:"open_access_url",csv:r=>r.w.open_access?.oa_url||""},
+    {k:"retr",h:"retracted",csv:r=>r.w.is_retracted?"yes":""},
+    {k:"na",h:"number_of_authors",csv:r=>r.auths.length},{k:"all",h:"all_authors_in_order",csv:r=>r.auths.map(aLabel).join("; ")},
+    {k:"fa",h:"first_author",csv:r=>r.auths[0]?aName(r.auths[0]):""},{k:"la",h:"last_author",csv:r=>r.auths.length>1?aName(r.auths[r.auths.length-1]):""},
+    {k:"ca",h:"corresponding_authors",csv:r=>r.auths.filter(a=>a.is_corresponding).map(aName).join("; ")},
+    {k:"ainst",h:"all_institutions",csv:r=>[...new Set(r.auths.flatMap(a=>(a.institutions||[]).map(i=>i.display_name)))].join("; ")},
+    {k:"tier",h:"journal_tier",csv:r=>TIER[r.tier]?.label||""},
     {k:"band",h:"quality_band",csv:r=>BAND[r.band].label.replace("⚠ ","")},{k:"lv",h:"channel_level",csv:r=>r.lv?.lvl??""},{k:"lvs",h:"channel_level_source",csv:r=>r.lv?.source||""},
     {k:"pub",h:"publisher",csv:r=>r.src?.host_organization_name||""},{k:"risk",h:"risk_reasons",csv:r=>r.riskWhy.join("; ")},
     {k:"fwci",h:"fwci"},{k:"pv",h:"citation_percentile",csv:r=>r.pct.value!=null?(100*r.pct.value).toFixed(1):""},{k:"top10",h:"top10",csv:r=>r.top10?"yes":"no"},
     {k:"intl",h:"international",csv:r=>r.intl?"yes":"no"},{k:"led",h:"institution_led",csv:r=>r.led?"yes":"no"},{k:"oa",h:"open_access",csv:r=>r.oa?"yes":"no"},
     {k:"sc",h:"scopus",csv:r=>r.ix.scopus},{k:"pm",h:"pubmed",csv:r=>r.ix.pubmed},{k:"wos",h:"wos",csv:r=>r.ix.wos},
     {k:"dmu",h:"reward_category",csv:r=>r.dmuOk?r.cat.label:""},{k:"st",h:"reward_status",csv:r=>r.status},{k:"why",h:"reward_reasons",csv:r=>[...r.fails,...r.review].join("; ")},
-    {k:"nAff",h:"affiliated_authors"},{k:"aa",h:"affiliated_author_names",csv:r=>r.auths.filter(a=>a.aff).map(a=>a.author?.display_name).join("; ")},{k:"depts",h:"departments",csv:r=>(r.depts||[]).join("; ")},{k:"campuses",h:"campus",csv:r=>(r.campuses||[]).join("; ")},
+    {k:"nAff",h:"affiliated_authors"},{k:"aa",h:"affiliated_author_names",csv:r=>r.auths.filter(a=>a.aff).map(aLabel).join("; ")},{k:"depts",h:"departments",csv:r=>(r.depts||[]).join("; ")},{k:"campuses",h:"campus",csv:r=>(r.campuses||[]).join("; ")},
   ]));
   pDraw();
   out.appendChild(pp);
